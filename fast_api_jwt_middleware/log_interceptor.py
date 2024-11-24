@@ -1,6 +1,5 @@
 import os
 
-
 class Logger:
     """
     A Logger class that intercepts logging method calls and defaults to print if no logger is provided.
