@@ -147,6 +147,79 @@ async def secure_endpoint():
 
 ```
 
+Multiple providers example using Azure AD and OKTA as the Identity providers:
+
+```python
+from fastapi import FastAPI
+from fast_api_jwt_middleware.middleware import MultiProviderAuthMiddleware
+from fast_api_jwt_middleware.wrapper import secure_route
+from fast_api_jwt_middleware.oidc_helper import get_oidc_urls
+
+# Create a FastAPI application
+app = FastAPI()
+
+# Azure AD B2C configuration for multiple policies
+azure_ad_b2c_configs = [
+    {
+        "tenant_name": "your-tenant-name",
+        "policy_name": "policy1",
+        "client_id": "your-client-id"
+    },
+    {
+        "tenant_name": "your-tenant-name",
+        "policy_name": "policy2",
+        "client_id": "your-client-id"
+    }
+]
+
+# OKTA configuration
+okta_config = {
+    "oidc_url": "https://your-okta-domain.com/oauth2/default/.well-known/openid-configuration",
+    "audience": "your-okta-audience",
+    "roles_key": "roles"  # Adjust this if your roles are stored under a different key
+}
+
+# Combine Azure AD B2C and OKTA configurations
+combined_configs = azure_ad_b2c_configs + [{"oidc_url": okta_config["oidc_url"]}]
+
+# Use the OIDC helper to get the OIDC URLs for both Azure AD B2C and OKTA
+oidc_urls = get_oidc_urls(
+    domains_or_configs=combined_configs,
+    provider_name="AzureAD_B2C"  # This is used for Azure AD B2C; OKTA URLs are directly provided
+)
+
+# Combine configurations for MultiProviderAuthMiddleware
+providers = [
+    {
+        "oidc_urls": oidc_urls[:len(azure_ad_b2c_configs)],  # Azure AD B2C URLs
+        "audiences": [azure_ad_b2c_configs[0]["client_id"]],  # Assuming the same client_id for all Azure policies
+        "roles_key": "roles"
+    },
+    {
+        "oidc_urls": [okta_config["oidc_url"]],  # OKTA URL
+        "audiences": [okta_config["audience"]],
+        "roles_key": okta_config["roles_key"]
+    }
+]
+
+# Add the MultiProviderAuthMiddleware to the FastAPI app
+app.add_middleware(
+    MultiProviderAuthMiddleware,
+    providers=providers
+)
+
+# Define a secure endpoint with role-based access control
+@app.get("/secure-endpoint")
+@secure_route(required_roles="admin")
+async def secure_endpoint():
+    return {"message": "You have access to this secure endpoint."}
+
+# Define a public endpoint without authentication
+@app.get("/public-endpoint")
+async def public_endpoint():
+    return {"message": "This is a public endpoint accessible to everyone."}
+```
+
 
 ### Configuration
 

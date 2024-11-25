@@ -3,3 +3,4 @@ pyjwt>=2.8.0
 cachetools
 requests
 build
+httpx
