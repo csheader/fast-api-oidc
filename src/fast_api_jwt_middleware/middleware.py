@@ -17,8 +17,7 @@ Dependencies:
     - cachetools: For caching OIDC configurations, JWKS, and tokens.
     - requests: For making HTTP requests to fetch OIDC configurations and JWKS.
     - jwt: For decoding and validating JWT tokens.
-    - os: For accessing environment variables.
-    - log_interceptor: For logging purposes.
+    - logging: For logging purposes.
 """
 
 from typing import List, Dict, Union, Optional
@@ -29,22 +28,24 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 import requests
 import jwt
-import os
-from .log_interceptor import Logger
+import logging
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """
-    Middleware to handle authentication for a single provider with multiple OIDC URLs.
+    Middleware for handling authentication with a single OIDC provider.
+
+    This middleware manages authentication by validating JWT tokens against a specified 
+    OpenID Connect (OIDC) provider. It supports multiple OIDC URLs and utilizes caching 
+    mechanisms to optimize performance.
 
     Attributes:
-        app (ASGIApp): FastAPI application.
-        oidc_urls (List[str]): List of well-known OIDC URLs for the IDP.
-        audiences (List[str]): The audience to validate tokens against.
-        token_cache (TTLCache): Cache for storing validated tokens.
-        jwks_cache (Dict[str, TTLCache]): Cache for storing JWKS data.
-        oidc_config_cache (TTLCache): Cache for storing OIDC configuration data.
-        supported_algorithms (Dict[str, List[str]]): Supported signing algorithms for each OIDC URL.
-        logger (Logger): Logger instance for logging messages.
+        app (ASGIApp): The FastAPI application instance.
+        oidc_urls (List[str]): A list of well-known OIDC URLs for the identity provider (IDP).
+        audiences (List[str]): A list of audiences to validate the tokens against.
+        token_cache (TTLCache): A cache for storing validated tokens to reduce validation overhead.
+        jwks_cache (Dict[str, TTLCache]): A cache for storing JSON Web Key Sets (JWKS) data for each OIDC URL.
+        oidc_config_cache (TTLCache): A cache for storing OIDC configuration data to minimize network requests.
+        logger (logging.Logger): A logger instance for logging authentication-related messages.
     """
     def __init__(
         self,
@@ -55,29 +56,34 @@ class AuthMiddleware(BaseHTTPMiddleware):
         jwks_ttl: int = 3600,
         oidc_ttl: int = 3600,
         token_cache_maxsize: int = 1000,
-        logger: Optional[object] = None
+        logger: Optional[logging.Logger] = None
     ) -> None:
         """
-        Middleware to handle authentication for a single provider with multiple OIDC URLs.
+        Initializes the AuthMiddleware for handling authentication with a single OIDC provider.
 
-        :param app: FastAPI application.
-        :param oidc_urls: List of well-known OIDC URLs for the IDP.
-        :param audience: The audience to validate tokens against.
-        :param token_ttl: Time-to-live for token cache (in seconds).
-        :param jwks_ttl: Time-to-live for JWKS cache (in seconds).
-        :param oidc_ttl: Time-to-live for OIDC configuration cache (in seconds).
-        :param token_cache_maxsize: Maximum size of the token cache.
+        :param app: The FastAPI application instance that this middleware will be applied to.
+        :param oidc_urls: A list of well-known OIDC URLs for the identity provider (IDP).
+        :param audiences: A list of audiences that the tokens must be validated against.
+        :param token_ttl: The time-to-live for the token cache, in seconds (default is 300 seconds).
+        :param jwks_ttl: The time-to-live for the JWKS cache, in seconds (default is 3600 seconds).
+        :param oidc_ttl: The time-to-live for the OIDC configuration cache, in seconds (default is 3600 seconds).
+        :param token_cache_maxsize: The maximum size of the token cache (default is 1000).
+        :param logger: An optional logger instance for logging authentication-related messages. If not provided, a default logger will be used.
         """
         super().__init__(app)
         self.oidc_urls: List[str] = oidc_urls
-        self.audiences: str = audiences
+        self.audiences: List[str] = audiences
         self.token_cache: TTLCache = TTLCache(maxsize=token_cache_maxsize, ttl=token_ttl)
         self.jwks_cache: Dict[str, TTLCache] = {
             oidc_url: TTLCache(maxsize=10, ttl=jwks_ttl) for oidc_url in oidc_urls
         }
         self.oidc_config_cache: TTLCache = TTLCache(maxsize=len(oidc_urls), ttl=oidc_ttl)
+        if logger is None:
+            print("No logger provided. Using default logger.")
+            self.logger = logging.getLogger(__name__)  # Initialize default logger
+        else:
+            self.logger = logger
         self.supported_algorithms: Dict[str, List[str]] = self.get_supported_algorithms()
-        self.logger = Logger(logger)
 
     def get_oidc_config(self, oidc_url: str) -> Dict[str, Union[str, List[str]]]:
         """
@@ -110,14 +116,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
             supported_algorithms[oidc_url] = oidc_config.get("id_token_signing_alg_values_supported", ["RS256"])
         return supported_algorithms
 
-    def get_jwks(self, oidc_url: str) -> Dict[str, Union[str, List[Dict[str, str]]]]:
+    def get_jwks(self, oidc_url: str, oidc_config: Dict[str, str | List[str]]) -> Dict[str, Union[str, List[Dict[str, str]]]]:
         """
         Fetches and caches JWKS data.
 
         :param oidc_url: The well-known OIDC URL.
         :return: JWKS data.
         """
-        oidc_config = self.get_oidc_config(oidc_url)
         jwks_uri = oidc_config.get("jwks_uri")
         if not jwks_uri:
             raise ValueError(f"JWKS URI not found for OIDC URL: {oidc_url}")
@@ -153,16 +158,18 @@ class AuthMiddleware(BaseHTTPMiddleware):
             self.logger.error('The token header does not contain a kid, the token is invalid.')
             raise ValueError("Token header does not contain 'kid'.")
 
-        # Search for the matching JWKS key across all OIDC URLs
         for oidc_url in self.oidc_urls:
-            jwks = self.get_jwks(oidc_url)
-            public_keys = {key["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(key) for key in jwks["keys"]}
+            oidc_config = self.get_oidc_config(oidc_url)
+            issuer = oidc_config['issuer']
+            jwks = self.get_jwks(oidc_url,oidc_config)
+            public_keys = {key["kid"]: jwt.PyJWK(key) for key in jwks["keys"]}
             if token_kid in public_keys:
                 try:
                     key = public_keys[token_kid]
                     decoded_token = jwt.decode(
                         token,
                         key=key,
+                        issuer=issuer,
                         algorithms=self.supported_algorithms[oidc_url],
                         audience=self.audiences,
                         options={"verify_exp": True}
@@ -194,20 +201,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
             request.state.user = None
         return await call_next(request)
 
-class MultiProviderAuthMiddleware(BaseHTTPMiddleware):
+class MultiProviderAuthMiddleware(AuthMiddleware):
     """
     Middleware to handle authentication for multiple providers.
-
-    Attributes:
-        app (ASGIApp): FastAPI application.
-        providers (List[Dict]): List of provider configurations, each including:
-            - oidc_urls: List of well-known OIDC URLs
-            - audiences: List of audiences to validate tokens against
-            - roles_key (optional): The claim key for roles (default: 'roles')
-        token_cache (TTLCache): Cache for storing validated tokens.
-        jwks_cache (Dict[str, TTLCache]): Cache for storing JWKS data.
-        oidc_config_cache (TTLCache): Cache for storing OIDC configuration data.
-        logger (Logger): Logger instance for logging messages.
     """
     def __init__(
         self,
@@ -217,40 +213,16 @@ class MultiProviderAuthMiddleware(BaseHTTPMiddleware):
         jwks_ttl: int = 3600,
         oidc_ttl: int = 3600,
         token_cache_maxsize: int = 1000,
-        logger: Optional[object] = None,
-    ):
-        """
-        Middleware to handle authentication for multiple providers.
-
-        :param app: FastAPI application.
-        :param providers: List of provider configurations, each including:
-            - oidc_urls: List of well-known OIDC URLs
-            - audiences: List of audiences to validate tokens against
-            - roles_key (optional): The claim key for roles (default: 'roles')
-        :param token_ttl: Time-to-live for token cache (in seconds).
-        :param jwks_ttl: Time-to-live for JWKS cache (in seconds).
-        :param oidc_ttl: Time-to-live for OIDC configuration cache (in seconds).
-        :param token_cache_maxsize: Maximum size of the token cache.
-        :param logger: Optional logger instance.
-        """
-        super().__init__(app)
+        logger: Optional[logging.Logger] = None,
+    ) -> None:
+        super().__init__(app, [provider["oidc_urls"] for provider in providers], 
+                         [provider["audiences"] for provider in providers], 
+                         token_ttl, jwks_ttl, oidc_ttl, token_cache_maxsize, logger)
         self.providers = providers
-        self.token_cache = TTLCache(maxsize=token_cache_maxsize, ttl=token_ttl)
-        self.jwks_cache = {}
-        self.oidc_config_cache = TTLCache(maxsize=len(providers), ttl=oidc_ttl)
-        self.logger = Logger(logger)
-
-        # Initialize JWKS caches for each OIDC URL
-        for provider in providers:
-            for oidc_url in provider["oidc_urls"]:
-                self.jwks_cache[oidc_url] = TTLCache(maxsize=10, ttl=jwks_ttl)
 
     def get_provider_for_token(self, token: str) -> Optional[Dict]:
         """
         Determine which provider's OIDC URLs and audiences match the given token.
-
-        :param token: The JWT token.
-        :return: The matching provider configuration or None.
         """
         unverified_claims = jwt.decode(token, options={"verify_signature": False})
         for provider in self.providers:
@@ -268,7 +240,7 @@ class MultiProviderAuthMiddleware(BaseHTTPMiddleware):
             provider = self.get_provider_for_token(token)
             if provider:
                 try:
-                    user_data = self.decode_token(token, provider)
+                    user_data = self.decode_token(token)  # Use the base class method
                     request.state.user = {
                         "token": token,
                         "roles": user_data.get(provider.get("roles_key", "roles"), []),
@@ -282,65 +254,3 @@ class MultiProviderAuthMiddleware(BaseHTTPMiddleware):
         # No token or no matching provider
         request.state.user = None
         return await call_next(request)
-
-    def decode_token(self, token: str, provider: Dict) -> Dict[str, Union[str, List[str]]]:
-        """
-        Decode and validate a token for a specific provider.
-
-        :param token: The JWT token.
-        :param provider: The provider configuration.
-        :return: Decoded token data.
-        """
-        # Check cache
-        if token in self.token_cache:
-            self.logger.debug("Token found in cache")
-            return self.token_cache[token]
-
-        # Get JWKS keys
-        for oidc_url in provider["oidc_urls"]:
-            jwks = self.get_jwks(oidc_url)
-            unverified_header = jwt.get_unverified_header(token)
-            token_kid = unverified_header.get("kid")
-            if not token_kid:
-                raise ValueError("Token header does not contain 'kid'.")
-
-            public_keys = {key["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(key) for key in jwks["keys"]}
-            if token_kid in public_keys:
-                try:
-                    key = public_keys[token_kid]
-                    decoded_token = jwt.decode(
-                        token,
-                        key=key,
-                        algorithms=["RS256"],
-                        audience=provider["audiences"],
-                        options={"verify_exp": True},
-                    )
-                    self.token_cache[token] = decoded_token
-                    return decoded_token
-                except jwt.PyJWTError as e:
-                    self.logger.error(f"Token validation failed: {e}")
-                    raise ValueError("Invalid token.")
-        raise ValueError("No matching key found for token.")
-
-    def get_jwks(self, oidc_url: str) -> Dict[str, Union[str, List[Dict[str, str]]]]:
-        """
-        Fetch and cache JWKS data for a specific OIDC URL.
-
-        :param oidc_url: The OIDC URL.
-        :return: JWKS data.
-        """
-        oidc_config = self.get_oidc_config(oidc_url)
-        jwks_uri = oidc_config.get("jwks_uri")
-        if not jwks_uri:
-            raise ValueError(f"JWKS URI not found for OIDC URL: {oidc_url}")
-
-        if jwks_uri in self.jwks_cache[oidc_url]:
-            return self.jwks_cache[oidc_url][jwks_uri]
-
-        response = requests.get(jwks_uri)
-        if response.status_code == 200:
-            jwks_data = response.json()
-            self.jwks_cache[oidc_url][jwks_uri] = jwks_data
-            return jwks_data
-
-        response.raise_for_status()

@@ -16,7 +16,8 @@ dependencies = [
     "starlette",
     "cachetools",
     "requests",
-    "pyjwt",
+    "pyjwt>=2.8.0",
+    "cryptography"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

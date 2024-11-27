@@ -1,7 +1,58 @@
+import asyncio
+import inspect
 from fastapi import Request, HTTPException, status
 from functools import wraps
 from typing import Callable, List, Union
 
+
+def is_called_from_async_context(func: Callable, *args, **kwargs):
+    """
+    Calls a function that can be either synchronous or asynchronous.
+
+    :param func: The function to call (can be sync or async).
+    :param args: Positional arguments to pass to the function.
+    :param kwargs: Keyword arguments to pass to the function.
+    :return: The result of the function call.
+    """
+    if inspect.iscoroutinefunction(func):
+        # If it's async, await it directly
+        return func(*args, **kwargs)  # Do not use asyncio.run()
+    else:
+        # If it's sync, just call it directly
+        return func(*args, **kwargs)
+
+def do_role_check(user, required_roles, roles_key):
+    """
+    Checks if the user has the required roles to access a resource.
+
+    :param user: The user object containing role information.
+    :raises HTTPException: If the user does not have the required role(s), a 403 Forbidden error is raised.
+    
+    This function retrieves the roles associated with the user and checks them against the 
+    required roles. If the user's roles do not include any of the required roles, an 
+    HTTPException is raised indicating that access is forbidden.
+
+    The `roles_key` variable should be defined in the scope where this function is called, 
+    indicating where to find the user's roles in the user object.
+
+    The `required_roles` variable should also be defined in the scope where this function is 
+    called, indicating the roles that are necessary for access.
+    """
+    user_roles = user.get(roles_key, [])
+    if isinstance(user_roles, str):
+        user_roles = [user_roles]
+    if isinstance(required_roles, str):
+        allowed_roles = [required_roles]
+    elif isinstance(required_roles, list):
+        allowed_roles = required_roles
+    else:
+        allowed_roles = []
+
+    if allowed_roles and not any(role in user_roles for role in allowed_roles):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"You do not have the required role(s) to access this resource. Required role(s): {', '.join(allowed_roles)}."
+        )
 
 def secure_route(
     required_roles: Union[str, List[str]] = None,
@@ -28,26 +79,11 @@ def secure_route(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="User information not received in the request."
                 )
-            
-            # get the roles from the provided key (if different from default of roles)
-            user_roles = user.get(roles_key, [])
-            if isinstance(user_roles, str):
-                user_roles = [user_roles]
-
-            if isinstance(required_roles, str):
-                allowed_roles = [required_roles]
-            elif isinstance(required_roles, list):
-                allowed_roles = required_roles
-            else:
-                allowed_roles = []
-
-            # Check if the user's roles include any of the required roles
-            if allowed_roles and not any(role in user_roles for role in allowed_roles):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"You do not have the required role(s) to access this resource. Required role(s): {', '.join(allowed_roles)}."
-                )
-            return await func(*args, **kwargs)
+            do_role_check(user, required_roles, roles_key)
+            maybe_async = is_called_from_async_context(func, *args, **kwargs)
+            if inspect.iscoroutine(maybe_async):
+                return await maybe_async
+            return maybe_async
 
         return wrapper
 

@@ -1,7 +1,7 @@
 from .oidc_providers import OIDCProvider, CUSTOM_OIDC_PROVIDERS
 from typing import List, Union
 
-def get_oidc_urls(domains_or_configs: List[dict], provider_name: str) -> List[str]:
+def get_oidc_urls(domains_or_configs: List[dict] | dict, provider_name: str) -> List[str]:
     """
     Constructs OIDC discovery URLs for both built-in and custom providers.
 
@@ -9,7 +9,8 @@ def get_oidc_urls(domains_or_configs: List[dict], provider_name: str) -> List[st
     :param provider_name: Name of the provider (can be built-in or custom).
     :return: List of OIDC discovery URLs.
     """
-    # Check if the provider is built-in
+    if isinstance(domains_or_configs, dict):
+        domains_or_configs = [domains_or_configs]
     if provider_name in OIDCProvider.__members__:
         provider = OIDCProvider[provider_name]
         url_template = provider.url_template
