@@ -3,7 +3,7 @@ from typing import List, Dict, Union
 
 
 class OIDCProvider(Enum):
-    """
+    '''
     Enum representing various OpenID Connect (OIDC) providers.
 
     Each provider is associated with a URL template for its OIDC discovery endpoint
@@ -31,24 +31,24 @@ class OIDCProvider(Enum):
     Methods:
         __init__(url_template: str, required_fields: List[str]):
             Initializes the OIDCProvider with a URL template and required fields.
-    """
-    OKTA = ("https://{domain}/.well-known/openid-configuration", ["domain"])
-    DUO = ("https://{domain}/oauth/v1/.well-known/openid-configuration", ["domain"])
-    ONELOGIN = ("https://{domain}/oidc/2/.well-known/openid-configuration", ["domain"])
-    AZURE_AD = ("https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration", ["tenant"])
-    AZURE_AD_B2C = ("https://{tenant}.b2clogin.com/{tenant}.onmicrosoft.com/{policy}/v2.0/.well-known/openid-configuration", ["tenant", "policy"])
-    GOOGLE = ("https://accounts.google.com/.well-known/openid-configuration", [])
-    FACEBOOK = ("https://www.facebook.com/.well-known/openid-configuration", [])
-    TWITTER = ("https://api.twitter.com/.well-known/openid-configuration", [])
-    GENERIC = ("{base_url}/.well-known/openid-configuration", ["base_url"])
-    AMAZON_COGNITO = ("https://{user_pool_id}.auth.{region}.amazoncognito.com/.well-known/openid-configuration", ["user_pool_id", "region"])
-    AUTH0 = ("https://{domain}/.well-known/openid-configuration", ["domain"])
-    PING_IDENTITY = ("https://{domain}/.well-known/openid-configuration", ["domain"])
-    IBM_SECURITY_VERIFY = ("https://{tenant}.verify.ibm.com/v2.0/.well-known/openid-configuration", ["tenant"])
-    SALESFORCE = ("https://{instance}.my.salesforce.com/.well-known/openid-configuration", ["instance"])
-    KEYCLOAK = ("https://{domain}/auth/realms/{realm}/.well-known/openid-configuration", ["domain", "realm"])
-    GITHUB = ("https://token.actions.githubusercontent.com/.well-known/openid-configuration", [])
-    LINKEDIN = ("https://www.linkedin.com/.well-known/openid-configuration", [])
+    '''
+    OKTA = ('https://{domain}/.well-known/openid-configuration', ['domain'])
+    DUO = ('https://{domain}/oauth/v1/.well-known/openid-configuration', ['domain'])
+    ONELOGIN = ('https://{domain}/oidc/2/.well-known/openid-configuration', ['domain'])
+    AZURE_AD = ('https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration', ['tenant'])
+    AZURE_AD_B2C = ('https://{tenant}.b2clogin.com/{tenant}.onmicrosoft.com/{policy}/v2.0/.well-known/openid-configuration', ['tenant', 'policy'])
+    GOOGLE = ('https://accounts.google.com/.well-known/openid-configuration', [])
+    FACEBOOK = ('https://www.facebook.com/.well-known/openid-configuration', [])
+    TWITTER = ('https://api.twitter.com/.well-known/openid-configuration', [])
+    GENERIC = ('{base_url}/.well-known/openid-configuration', ['base_url'])
+    AMAZON_COGNITO = ('https://{user_pool_id}.auth.{region}.amazoncognito.com/.well-known/openid-configuration', ['user_pool_id', 'region'])
+    AUTH0 = ('https://{domain}/.well-known/openid-configuration', ['domain'])
+    PING_IDENTITY = ('https://{domain}/.well-known/openid-configuration', ['domain'])
+    IBM_SECURITY_VERIFY = ('https://{tenant}.verify.ibm.com/v2.0/.well-known/openid-configuration', ['tenant'])
+    SALESFORCE = ('https://{instance}.my.salesforce.com/.well-known/openid-configuration', ['instance'])
+    KEYCLOAK = ('https://{domain}/auth/realms/{realm}/.well-known/openid-configuration', ['domain', 'realm'])
+    GITHUB = ('https://token.actions.githubusercontent.com/.well-known/openid-configuration', [])
+    LINKEDIN = ('https://www.linkedin.com/.well-known/openid-configuration', [])
 
     def __init__(self, url_template: str, required_fields: List[str]):
         self.url_template = url_template
@@ -57,7 +57,7 @@ class OIDCProvider(Enum):
 
 # Registry for custom providers
 CUSTOM_OIDC_PROVIDERS: Dict[str, Dict[str, Union[str, List[str]]]] = {}
-"""
+'''
 A registry for custom OpenID Connect (OIDC) providers.
 
 This dictionary allows users to register custom OIDC providers that are not predefined
@@ -67,32 +67,32 @@ with its associated URL template and required fields.
 Structure:
     - Key: The name of the custom provider (str).
     - Value: A dictionary containing:
-        - "url_template": The URL template for the provider's OIDC discovery endpoint (str).
-        - "required_fields": A list of fields required to construct the URL (List[str]).
+        - 'url_template': The URL template for the provider's OIDC discovery endpoint (str).
+        - 'required_fields': A list of fields required to construct the URL (List[str]).
 
 Example:
     CUSTOM_OIDC_PROVIDERS = {
-        "CustomProvider": {
-            "url_template": "https://{custom_domain}/.well-known/openid-configuration",
-            "required_fields": ["custom_domain"]
+        'CustomProvider': {
+            'url_template': 'https://{custom_domain}/.well-known/openid-configuration',
+            'required_fields': ['custom_domain']
         }
     }
-"""
+'''
 
 
 def register_custom_provider(
     name: str, url_template: str, required_fields: List[str]
 ):
-    """
+    '''
     Registers a custom OIDC provider.
 
     :param name: Name of the custom provider.
     :param url_template: URL template for the custom provider.
     :param required_fields: List of required fields for the provider.
-    """
+    '''
     if name in CUSTOM_OIDC_PROVIDERS or name in OIDCProvider.__members__:
         raise ValueError(f"Provider '{name}' already exists.")
     CUSTOM_OIDC_PROVIDERS[name] = {
-        "url_template": url_template,
-        "required_fields": required_fields,
+        'url_template': url_template,
+        'required_fields': required_fields,
     }

@@ -1,4 +1,3 @@
-import asyncio
 import inspect
 from fastapi import Request, HTTPException, status
 from functools import wraps
@@ -6,14 +5,14 @@ from typing import Callable, List, Union
 
 
 def is_called_from_async_context(func: Callable, *args, **kwargs):
-    """
+    '''
     Calls a function that can be either synchronous or asynchronous.
 
     :param func: The function to call (can be sync or async).
     :param args: Positional arguments to pass to the function.
     :param kwargs: Keyword arguments to pass to the function.
     :return: The result of the function call.
-    """
+    '''
     if inspect.iscoroutinefunction(func):
         # If it's async, await it directly
         return func(*args, **kwargs)  # Do not use asyncio.run()
@@ -22,7 +21,7 @@ def is_called_from_async_context(func: Callable, *args, **kwargs):
         return func(*args, **kwargs)
 
 def do_role_check(user, required_roles, roles_key):
-    """
+    '''
     Checks if the user has the required roles to access a resource.
 
     :param user: The user object containing role information.
@@ -37,7 +36,7 @@ def do_role_check(user, required_roles, roles_key):
 
     The `required_roles` variable should also be defined in the scope where this function is 
     called, indicating the roles that are necessary for access.
-    """
+    '''
     user_roles = user.get(roles_key, [])
     if isinstance(user_roles, str):
         user_roles = [user_roles]
@@ -51,35 +50,37 @@ def do_role_check(user, required_roles, roles_key):
     if allowed_roles and not any(role in user_roles for role in allowed_roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"You do not have the required role(s) to access this resource. Required role(s): {', '.join(allowed_roles)}."
+            detail=f'You do not have the required role(s) to access this resource. Required role(s): {', '.join(allowed_roles)}.'
         )
 
 def secure_route(
     required_roles: Union[str, List[str]] = None,
-    roles_key: str = "roles"
+    roles_key: str = 'roles'
 ) -> Callable:
-    """
+    '''
     A decorator to secure routes by checking the user's roles.
 
     :param required_roles: A single role or a list of roles required for accessing the route.
-    :param roles_key: The key in the token where roles are stored (default: "roles").
-    """
+    :param roles_key: The key in the token where roles are stored (default: 'roles').
+    '''
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            request: Request = kwargs.get("request")
+            request: Request = kwargs.get('request')
             if not request:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Request object not found. Ensure 'request' is passed to your route."
                 )
-            user = getattr(request.state, "user", None)
+            user = getattr(request.state, 'user', None)
             if not user:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="User information not received in the request."
+                    detail='User information not received in the request.'
                 )
-            do_role_check(user, required_roles, roles_key)
+            # Use the roles_key from the middleware if provided, otherwise use the default
+            effective_roles_key = kwargs.get('roles_key', roles_key)
+            do_role_check(user, required_roles, effective_roles_key)
             maybe_async = is_called_from_async_context(func, *args, **kwargs)
             if inspect.iscoroutine(maybe_async):
                 return await maybe_async
