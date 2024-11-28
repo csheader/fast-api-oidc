@@ -54,10 +54,10 @@ The following OIDC providers are currently supported:
 | **KEYCLOAK**          | `https://{domain}/auth/realms/{realm}/.well-known/openid-configuration`                             | `domain`, `realm`             |
 | **GITHUB**            | `https://token.actions.githubusercontent.com/.well-known/openid-configuration`                       | None                           |
 
+### Functions
 
-- **Functions**:
-  - `get_oidc_urls(domains_or_configs: List[dict] | dict, provider_name: str)`: Constructs OIDC discovery URLs for both built-in and custom providers.
-  - `register_custom_provider(name: str, url_template: str, required_fields: List[str])`: Registers a custom OIDC provider.
+- `get_oidc_urls(domains_or_configs: List[dict] | dict, provider_name: str)`: Constructs OIDC discovery URLs for both built-in and custom providers.
+- `register_custom_provider(name: str, url_template: str, required_fields: List[str])`: Registers a custom OIDC provider.
 
 ### Using `get_oidc_urls`
 
@@ -133,8 +133,8 @@ oidc_url = get_oidc_urls(domains_or_configs=azure_ad_b2c_config, provider_name="
 # Add the AuthMiddleware to the FastAPI app
 app.add_middleware(
     AuthMiddleware,
-    oidc_url=oidc_url,
-    audience="your-client-id",  # Replace with your actual client ID
+    oidc_urls=[oidc_url],
+    audiences=["your-client-id"],  # Replace with your actual client ID
     roles_key="roles"  # Adjust this if your roles are stored under a different key
 )
 
@@ -175,15 +175,17 @@ azure_ad_b2c_configs = [
 ]
 
 # Use the OIDC helper to get the OIDC URLs for each policy
-oidc_urls = get_oidc_urls(domains_or_configs=azure_ad_b2c_configs, provider_name="AzureAD_B2C")
+oidc_urls = get_oidc_urls(domains_or_configs=azure_ad_b2c_configs, provider_name="AZURE_AD_B2C")
 
 # Add the MultiProviderAuthMiddleware to the FastAPI app for each policy
 app.add_middleware(
     MultiProviderAuthMiddleware,
-    oidc_urls=oidc_urls,
-    audience="your-client-id",  # Replace with your actual client ID
-    roles_key="roles"  # Adjust this if your roles are stored under a different key
+    providers=[{"oidc_urls": oidc_urls, "audiences": ["your-client-id","your-other-client-id"]}],  # Replace with your actual client ID(s)
+    roles_key="roles",  # Adjust this if your roles are stored under a different claim
+    excluded_paths=['/public-endpoint'] #Paths which you would not like to perform any auth checks
 )
+
+
 
 # Define a secure endpoint with role-based access control
 @app.get("/secure-endpoint")
@@ -197,7 +199,22 @@ async def secure_endpoint():
 async def another_secure_endpoint():
     return {"message": "You have access to this secure endpoint as an admin or editor."}
 
+# Define another secure endpoint with different role requirements and claim keys
+@app.get("/yet-another-secure-endpoint")
+@secure_route(required_roles=["superadmin"], role_key='permissions')
+async def another_secure_endpoint():
+    return {"message": "You have access to this secure endpoint as an admin or editor."}
+
+# Define another endpoint that only validates the
+# JWT and does not have any role requirements
+@app.get("/yet-another-secure-endpoint")
+@secure_route()
+async def another_secure_endpoint():
+    return {"message": "You have access to this secure endpoint as an admin or editor."}
+
 # Define a public endpoint without authentication
+# to avoid jwt auth, the path must be defined in the
+# excluded_paths for the middleware
 @app.get("/public-endpoint")
 async def public_endpoint():
     return {"message": "This is a public endpoint accessible to everyone."}
@@ -224,10 +241,26 @@ Example:
 ```python
 from fast_api_jwt_middleware.wrapper import secure_route
 
+# secured endpoint, uses the default roles_key in the
+# middleware or the "roles" claim on the token
 @app.get("/secure-endpoint")
 @secure_route(required_roles="admin")
 async def secure_endpoint():
     return {"message": "You have access to this secure endpoint."}
+
+# secured endpoint, uses the roles_key from the route
+# in place of the default roles key from the middleware
+@app.get("/secure-endpoint")
+@secure_route(required_roles="admin", roles_key='permissions')
+async def secure_endpoint():
+    return {"message": "You have access to this secure endpoint."}
+
+#unsecured endpoint, if a token is passed it will still be cached
+@app.get("/secure-endpoint")
+async def secure_endpoint():
+    return {"message": "You have access to this secure endpoint."}
+
+
 ```
 
 ## Error Handling
@@ -243,6 +276,7 @@ The middleware returns the following HTTP responses:
 - `pyjwt>=2.8.0`
 - `cachetools`
 - `requests`
+- `cryptography`
 
 ## License
 

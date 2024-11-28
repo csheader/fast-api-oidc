@@ -47,6 +47,7 @@ def do_role_check(user, required_roles, roles_key):
     else:
         allowed_roles = []
 
+    #TODO: Handle scp whitelist delimited values
     if allowed_roles and not any(role in user_roles for role in allowed_roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
