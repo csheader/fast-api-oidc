@@ -63,53 +63,6 @@ The following OIDC providers are currently supported by default by this library,
 - `get_oidc_urls(domains_or_configs: List[dict] | dict, provider_name: str)`: Constructs OIDC discovery URLs for both built-in and custom providers.
 - `register_custom_provider(name: str, url_template: str, required_fields: List[str])`: Registers a custom OIDC provider.
 
-### Cache operations
-
-This library uses a singleton to manage an in memory cache for the tokens. These tokens are cached for the default that is created when you implement the middleware in your application. This includes max size and TTL. 
-
-The cache is exposed to allow for debugging and cache operations for the users of this library. Specific scenarios where this is useful outside of debugging is to remove a token from the cache during logout, or in scenarios where you have invalidated the refresh token for the user and would like to revoke access to the API's at the same time if your provider does not support this action. 
-
-#### Cache operation examples:
-
-```python
-from fast_api_jwt_middleware import TokenCacheSingleton
-
-# The cache is instantiated by the library by default.
-# You do not need to instantiate the cache to perform
-# operations.
-token_object = {'token':'your_token', 'decoded_token': { ...your decoded token properties ... } }
-
-# token added to the cache
-TokenCacheSingleton.add_token(token_object['token'], token_object['decoded_token'])
-# token retrieved from the cache
-decoded_token = TokenCacheSingleton.get_token(token_object['token'])
-# remove token
-TokenCacheSingleton.remove_token(token_object['token'])
-
-# returns None for the token if it has been removed
-token_does_not_exist = TokenCacheSingleton.get_token(token_object['token'])
-
-# get the first 100 entries from the token cache
-token_list = TokenCacheSingleton.list_tokens(page=1, page_size=100)
-
-# The response of this function is an object with the following shape:
-# {
-#     "total_tokens": int,
-#     "total_pages": int,
-#     "current_page": int,
-#     "tokens": {
-#         token: {
-#             "value": object (decoded token),
-#             "expiration": int (TTL)
-#         }
-#     }
-# }
-
-# clear all cache
-TokenCacheSingleton.clear()
-
-```
-
 
 ### Using `get_oidc_urls`
 
@@ -338,6 +291,55 @@ async def secure_endpoint():
 
 
 ```
+
+
+### Cache operations
+
+This library uses a singleton to manage an in memory cache for the tokens. These tokens are cached for the default that is created when you implement the middleware in your application. This includes max size and TTL. 
+
+The cache is exposed to allow for debugging and cache operations for the users of this library. Specific scenarios where this is useful outside of debugging is to remove a token from the cache during logout, or in scenarios where you have invalidated the refresh token for the user and would like to revoke access to the API's at the same time if your provider does not support this action. 
+
+#### Cache operation examples:
+
+```python
+from fast_api_jwt_middleware import TokenCacheSingleton
+
+# The cache is instantiated by the library by default.
+# You do not need to instantiate the cache to perform
+# operations.
+token_object = {'token':'your_token', 'decoded_token': { ...your decoded token properties ... } }
+
+# token added to the cache
+TokenCacheSingleton.add_token(token_object['token'], token_object['decoded_token'])
+# token retrieved from the cache
+decoded_token = TokenCacheSingleton.get_token(token_object['token'])
+# remove token
+TokenCacheSingleton.remove_token(token_object['token'])
+
+# returns None for the token if it has been removed
+token_does_not_exist = TokenCacheSingleton.get_token(token_object['token'])
+
+# get the first 100 entries from the token cache
+token_list = TokenCacheSingleton.list_tokens(page=1, page_size=100)
+
+# The response of this function is an object with the following shape:
+# {
+#     "total_tokens": int,
+#     "total_pages": int,
+#     "current_page": int,
+#     "tokens": {
+#         token: {
+#             "value": object (decoded token),
+#             "expiration": int (TTL)
+#         }
+#     }
+# }
+
+# clear all cache
+TokenCacheSingleton.clear()
+
+```
+
 
 ## Error Handling
 The middleware returns the following HTTP responses:
