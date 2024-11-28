@@ -90,7 +90,20 @@ def register_custom_provider(
     '''
     if name in CUSTOM_OIDC_PROVIDERS or name in OIDCProvider.__members__:
         raise ValueError(f"Provider '{name}' already exists.")
+    if name is None or name.strip() == "":
+        raise ValueError(f'Provider name is required.')
+    if url_template is None or name.strip() == "":
+        raise ValueError(f'Provider url_template is required.')
     CUSTOM_OIDC_PROVIDERS[name] = {
         'url_template': url_template,
         'required_fields': required_fields,
     }
+
+def get_registered_providers() -> Dict[str, Dict[str, Union[str, List[str]]]]:
+    """
+    Retrieves the currently registered custom OIDC providers.
+
+    :return: A dictionary of registered OIDC providers, where the key is the provider name
+             and the value is a dictionary containing 'url_template' and 'required_fields'.
+    """
+    return CUSTOM_OIDC_PROVIDERS

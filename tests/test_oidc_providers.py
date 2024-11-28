@@ -3,22 +3,23 @@ import sys
 import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-from fast_api_jwt_middleware.oidc_providers import register_custom_provider, get_registered_providers
+from fast_api_jwt_middleware.oidc_providers import (
+    register_custom_provider,
+    get_registered_providers,
+    OIDCProvider,
+    CUSTOM_OIDC_PROVIDERS
+)
 
 class TestOIDCProviders(unittest.TestCase):
 
     def setUp(self):
         """Set up any necessary state before each test."""
         # Clear any previously registered providers if applicable
-        # This assumes you have a way to clear registered providers
-        # For example, if you have a global list or dictionary to store them
         self.clear_registered_providers()
 
     def clear_registered_providers(self):
         """Helper method to clear registered providers for testing."""
-        # This function should clear the registered providers
-        # Implement this based on how you store registered providers
-        pass
+        CUSTOM_OIDC_PROVIDERS.clear()
 
     def test_register_custom_provider(self):
         """Test registering a custom OIDC provider."""
@@ -30,7 +31,7 @@ class TestOIDCProviders(unittest.TestCase):
         register_custom_provider(name=provider_name, url_template=url_template, required_fields=required_fields)
 
         # Check if the provider is registered correctly
-        registered_providers = get_registered_providers()  # Assuming this function returns the list of registered providers
+        registered_providers = get_registered_providers()
         self.assertIn(provider_name, registered_providers)
 
     def test_register_custom_provider_invalid(self):
@@ -51,11 +52,30 @@ class TestOIDCProviders(unittest.TestCase):
         with self.assertRaises(ValueError):
             register_custom_provider(name=provider_name, url_template=url_template, required_fields=required_fields)
 
+    def test_register_existing_static_provider(self):
+        """Test registering an existing OIDC provider from the static list."""
+        provider_name = "OKTA"  # This is an existing provider in the OIDCProvider enum
+        url_template = "https://{domain}/.well-known/openid-configuration"
+        required_fields = ["domain"]
+
+        # Attempt to register an existing provider
+        with self.assertRaises(ValueError):
+            register_custom_provider(name=provider_name, url_template=url_template, required_fields=required_fields)
+
     def test_get_registered_providers_empty(self):
         """Test getting registered providers when none are registered."""
         self.clear_registered_providers()  # Ensure no providers are registered
         registered_providers = get_registered_providers()
         self.assertEqual(registered_providers, {})
+
+    def test_supported_providers(self):
+        """Test that all supported OIDC providers are registered correctly."""
+        for provider in OIDCProvider:
+            name = provider.name
+            url_template = provider.value[0]
+            required_fields = provider.value[1]
+            with self.assertRaises(ValueError):
+                register_custom_provider(name=name, url_template=url_template, required_fields=required_fields)
 
 if __name__ == "__main__":
     unittest.main()
