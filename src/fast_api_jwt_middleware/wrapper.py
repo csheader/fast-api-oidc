@@ -1,8 +1,8 @@
 import inspect
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, status
 from functools import wraps
 from typing import Callable, List, Union
-
+from fast_api_jwt_middleware.context_holder import request_context
 
 def is_called_from_async_context(func: Callable, *args, **kwargs):
     '''
@@ -66,11 +66,14 @@ def secure_route(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            request: Request = kwargs.get('request')
+            request = kwargs.get('request')
+            if not request:
+                # If not found, try to get it from the context variable
+                request = request_context.get(None)
             if not request:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Request object not found. Ensure 'request' is passed to your route."
+                    detail="Request object not found. Please evaluate your code to validate that a request context is available."
                 )
             user = getattr(request.state, 'user', None)
             if not user:
@@ -78,7 +81,7 @@ def secure_route(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail='User information not received in the request.'
                 )
-            # Use the roles_key from the middleware if provided, otherwise use the default
+            # Use the roles_key from the wrapper if provided, otherwise use the default
             effective_roles_key = kwargs.get('roles_key', roles_key)
             do_role_check(user, required_roles, effective_roles_key)
             maybe_async = is_called_from_async_context(func, *args, **kwargs)

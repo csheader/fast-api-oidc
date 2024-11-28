@@ -4,7 +4,7 @@ import logging
 from cachetools import TTLCache
 from typing import Any, Optional
 
-# Configure logging
+# Just in case we somehow get here and a logger wasn't setup.
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
@@ -38,7 +38,7 @@ class TokenCache:
         :param value: The value to store, typically the decoded token data.
         '''
         self._cache[token] = value
-        self._log_token(token, 'Added')
+        self._log_token(token, 'Added to cache')
 
     def get_token(self, token: str) -> Optional[Any]:
         '''
@@ -49,7 +49,7 @@ class TokenCache:
         '''
         value = self._cache.get(token)
         if value is not None:
-            self._log_token(token, 'Retrieved')
+            self._log_token(token, 'Retrieved cached')
         else:
             self._log_token(token, 'Not found in cache')
         return value
@@ -63,7 +63,7 @@ class TokenCache:
         '''
         if token in self._cache:
             del self._cache[token]
-            self._log_token(token, 'Removed')
+            self._log_token(token, 'Removed from cache')
             return True
         self._log_token(token, 'Not found for removal')
         return False
@@ -87,10 +87,11 @@ class TokenCache:
         
         # figure out the total number of pages
         total_tokens = len(all_tokens)
+        self.logger.debug(f'Total tokens in cache: {total_tokens}, Total pages: {total_pages}')
         total_pages = (total_tokens + page_size - 1) // page_size
         start_index = (page - 1) * page_size
         end_index = start_index + page_size
-
+        self.logger.debug(f'Retrieving tokens for page {page}: start index {start_index}, end index {end_index}')
         tokens_page = all_tokens[start_index:end_index]
         result = {
             "total_tokens": total_tokens,

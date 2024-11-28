@@ -1,10 +1,13 @@
-from typing import List, Dict, Union, Optional
+
+from contextvars import ContextVar
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from starlette.types import ASGIApp
 import jwt
-import logging
+from starlette.types import ASGIApp
+from typing import List, Dict, Union, Optional
 from fast_api_jwt_middleware.auth_middleware import AuthMiddleware
+from fast_api_jwt_middleware.context_holder import request_context
+from fast_api_jwt_middleware.logger_protocol_contract import LoggerProtocol
 
 class MultiProviderAuthMiddleware(AuthMiddleware):
     '''
@@ -34,7 +37,7 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
         jwks_ttl: int = 3600,
         oidc_ttl: int = 3600,
         token_cache_maxsize: int = 1000,
-        logger: Optional[logging.Logger] = None,
+        logger: Optional[LoggerProtocol] = None,
         excluded_paths: List[str] = [],
         roles_key: str = 'roles'
     ) -> None:
@@ -69,6 +72,7 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
                         'roles': user_data.get(provider.get('roles_key', 'roles'), []),
                         'provider': provider,
                     }
+                    request_context.set(request)
                     return await call_next(request)
                 except Exception as e:
                     self.logger.error(f'Authentication failed: {e}')

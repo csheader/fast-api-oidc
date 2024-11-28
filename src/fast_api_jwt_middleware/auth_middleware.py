@@ -1,15 +1,20 @@
 
-from typing import List, Dict, Union, Optional
+
+
 from cachetools import TTLCache
+from contextvars import ContextVar
 from fastapi import Request
 from fastapi.responses import JSONResponse
+import jwt
+from jwt import ExpiredSignatureError, InvalidTokenError, DecodeError
+import logging
+import requests
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-import requests
-import jwt
-import logging
+from typing import List, Dict, Union, Optional
+from fast_api_jwt_middleware.logger_protocol_contract import LoggerProtocol
+from fast_api_jwt_middleware.context_holder import request_context
 from fast_api_jwt_middleware.token_cache_singleton import TokenCacheSingleton 
-from jwt import ExpiredSignatureError, InvalidTokenError, DecodeError
 
 class AuthMiddleware(BaseHTTPMiddleware):
     '''
@@ -39,7 +44,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         jwks_ttl: int = 3600,
         oidc_ttl: int = 3600,
         token_cache_maxsize: int = 1000,
-        logger: Optional[logging.Logger] = None,
+        logger: Optional[LoggerProtocol] = None,
         excluded_paths: List[str] = [],
         roles_key: str = 'roles'
     ) -> None:
@@ -59,8 +64,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         if logger is None:
             print('No logger provided. Using default logger.')
-            self.logger = logging.getLogger(__name__)  # Initialize default logger
+            self.logger = logging.getLogger(__name__)
         else:
+            if not isinstance(logger, LoggerProtocol):
+                raise TypeError("Logger must implement the logging protocol.")
             self.logger = logger
         self.oidc_urls: List[str] = oidc_urls
         self.audiences: List[str] = audiences
@@ -216,6 +223,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         try:
             user_data = self.decode_token(token)
             request.state.user = user_data
+            request_context.set(request)
             return await call_next(request)
         except ExpiredSignatureError:
             return JSONResponse(status_code=401, content={'detail': 'Token has expired. Please log in again.'})
