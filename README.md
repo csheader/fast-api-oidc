@@ -1,5 +1,7 @@
 # FastAPI Authentication Middleware
 
+>**NOTE:** This package is under active development.
+
 ## Overview
 
 `fast-api-auth-middleware` is a simple authentication middleware for FastAPI applications. It supports multiple OpenID Connect (OIDC) providers, including custom providers, and allows for role-based access control (RBAC) on routes.
@@ -79,7 +81,7 @@ azure_ad_b2c_configs = [
 ]
 
 # Get OIDC URLs for Azure AD B2C
-oidc_urls = get_oidc_urls(domains_or_configs=azure_ad_b2c_configs, provider_name="AzureAD_B2C")
+oidc_urls = get_oidc_urls(domains_or_configs=azure_ad_b2c_configs, provider_name="AZURE_AD_B2C")
 
 print(oidc_urls)
 ```
@@ -128,7 +130,7 @@ azure_ad_b2c_config = {
 }
 
 # Get OIDC URL for Azure AD B2C
-oidc_url = get_oidc_urls(domains_or_configs=azure_ad_b2c_config, provider_name="AzureAD_B2C")[0]
+oidc_url = get_oidc_urls(domains_or_configs=azure_ad_b2c_config, provider_name="AZURE_AD_B2C")
 
 # Add the AuthMiddleware to the FastAPI app
 app.add_middleware(
