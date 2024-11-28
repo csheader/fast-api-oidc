@@ -46,3 +46,10 @@ class TokenCacheSingleton:
     def clear(cls) -> None:
         '''Clear all tokens from the cache.'''
         cls.get_instance().clear()
+
+    @classmethod
+    def list_tokens(cls, page: int = 1, page_size: int = 10) -> dict:
+        '''
+        list tokens from the cache, only necessary in debugging scenarios
+        '''
+        return cls.list_tokens(page, page_size)

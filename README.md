@@ -32,6 +32,29 @@ The following classes and functions are available for use in this package:
   - `TokenCacheSingleton`: A singleton class that provides a global access point to a `TokenCache` instance.
   - `OIDCProvider`: Enum representing various OpenID Connect (OIDC) providers.
 
+### Supported OIDC Providers
+
+The following OIDC providers are currently supported:
+
+| Provider Type         | URL Template                                                                                          | Required Inputs                |
+|-----------------------|-------------------------------------------------------------------------------------------------------|--------------------------------|
+| **OKTA**              | `https://{domain}/.well-known/openid-configuration`                                                  | `domain`                       |
+| **DUO**               | `https://{domain}/oauth/v1/.well-known/openid-configuration`                                        | `domain`                       |
+| **ONELOGIN**          | `https://{domain}/oidc/2/.well-known/openid-configuration`                                          | `domain`                       |
+| **AZURE AD**          | `https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration`                  | `tenant`                       |
+| **AZURE AD B2C**      | `https://{tenant}.b2clogin.com/{tenant}.onmicrosoft.com/{policy}/v2.0/.well-known/openid-configuration` | `tenant`, `policy`            |
+| **GOOGLE**            | `https://accounts.google.com/.well-known/openid-configuration`                                      | None                           |
+| **FACEBOOK**          | `https://www.facebook.com/.well-known/openid-configuration`                                         | None                           |
+| **GENERIC**           | `{base_url}/.well-known/openid-configuration`                                                       | `base_url`                    |
+| **AMAZON COGNITO**    | `https://{user_pool_id}.auth.{region}.amazoncognito.com/.well-known/openid-configuration`          | `user_pool_id`, `region`      |
+| **AUTH0**             | `https://{domain}/.well-known/openid-configuration`                                                  | `domain`                       |
+| **PING IDENTITY**     | `https://{domain}/.well-known/openid-configuration`                                                  | `domain`                       |
+| **IBM SECURITY VERIFY**| `https://{tenant}.verify.ibm.com/v2.0/.well-known/openid-configuration`                             | `tenant`                       |
+| **SALESFORCE**        | `https://{instance}.my.salesforce.com/.well-known/openid-configuration`                             | `instance`                     |
+| **KEYCLOAK**          | `https://{domain}/auth/realms/{realm}/.well-known/openid-configuration`                             | `domain`, `realm`             |
+| **GITHUB**            | `https://token.actions.githubusercontent.com/.well-known/openid-configuration`                       | None                           |
+
+
 - **Functions**:
   - `get_oidc_urls(domains_or_configs: List[dict] | dict, provider_name: str)`: Constructs OIDC discovery URLs for both built-in and custom providers.
   - `register_custom_provider(name: str, url_template: str, required_fields: List[str])`: Registers a custom OIDC provider.

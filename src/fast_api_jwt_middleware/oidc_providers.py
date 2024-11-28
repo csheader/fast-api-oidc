@@ -39,7 +39,6 @@ class OIDCProvider(Enum):
     AZURE_AD_B2C = ('https://{tenant}.b2clogin.com/{tenant}.onmicrosoft.com/{policy}/v2.0/.well-known/openid-configuration', ['tenant', 'policy'])
     GOOGLE = ('https://accounts.google.com/.well-known/openid-configuration', [])
     FACEBOOK = ('https://www.facebook.com/.well-known/openid-configuration', [])
-    TWITTER = ('https://api.twitter.com/.well-known/openid-configuration', [])
     GENERIC = ('{base_url}/.well-known/openid-configuration', ['base_url'])
     AMAZON_COGNITO = ('https://{user_pool_id}.auth.{region}.amazoncognito.com/.well-known/openid-configuration', ['user_pool_id', 'region'])
     AUTH0 = ('https://{domain}/.well-known/openid-configuration', ['domain'])
@@ -48,7 +47,6 @@ class OIDCProvider(Enum):
     SALESFORCE = ('https://{instance}.my.salesforce.com/.well-known/openid-configuration', ['instance'])
     KEYCLOAK = ('https://{domain}/auth/realms/{realm}/.well-known/openid-configuration', ['domain', 'realm'])
     GITHUB = ('https://token.actions.githubusercontent.com/.well-known/openid-configuration', [])
-    LINKEDIN = ('https://www.linkedin.com/.well-known/openid-configuration', [])
 
     def __init__(self, url_template: str, required_fields: List[str]):
         self.url_template = url_template

@@ -16,5 +16,4 @@ __all__ = [
     OIDCProvider,
     register_custom_provider,
     TokenCacheSingleton
-
 ]

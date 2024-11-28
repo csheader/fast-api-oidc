@@ -74,3 +74,34 @@ class TokenCache:
         '''
         self._cache.clear()
         self.logger.debug('All tokens cleared from cache.')
+
+    def list_tokens(self, page: int = 1, page_size: int = 10) -> dict:
+        '''
+        List all tokens in the cache in a pageable fashion.
+
+        :param page: The page number to retrieve (1-based).
+        :param page_size: The number of tokens per page.
+        :return: A dictionary containing the tokens for the requested page and total count.
+        '''
+        all_tokens = list(self._cache.items())
+        
+        # figure out the total number of pages
+        total_tokens = len(all_tokens)
+        total_pages = (total_tokens + page_size - 1) // page_size
+        start_index = (page - 1) * page_size
+        end_index = start_index + page_size
+
+        tokens_page = all_tokens[start_index:end_index]
+        result = {
+            "total_tokens": total_tokens,
+            "total_pages": total_pages,
+            "current_page": page,
+            "tokens": {
+                token: {
+                    "value": value,
+                    "expiration": self._cache.get(token)
+                }
+                for token, value in tokens_page
+            }
+        }
+        return result
