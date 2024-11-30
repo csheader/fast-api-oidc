@@ -1,8 +1,4 @@
-
-
-
 from cachetools import TTLCache
-from contextvars import ContextVar
 from fastapi import Request
 from fastapi.responses import JSONResponse
 import jwt
@@ -60,6 +56,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         :param token_cache_maxsize: The maximum size of the token cache (default is 1000).
         :param logger: An optional logger instance for logging authentication-related messages. If not provided, a default logger will be used.
         :param excluded_paths: A list of paths that should be excluded from authentication checks (default is an empty list).
+        :param roles_key: The default location for your roles within your authentication context. (default is 'roles')
         '''
         super().__init__(app)
         if logger is None:

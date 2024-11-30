@@ -15,7 +15,7 @@ def is_called_from_async_context(func: Callable, *args, **kwargs):
     '''
     if inspect.iscoroutinefunction(func):
         # If it's async, await it directly
-        return func(*args, **kwargs)  # Do not use asyncio.run()
+        return func(*args, **kwargs)  # Do not use asyncio.run(), the world blows up.
     else:
         # If it's sync, just call it directly
         return func(*args, **kwargs)

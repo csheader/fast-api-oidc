@@ -159,14 +159,14 @@ async def another_secure_endpoint():
 # Define another secure endpoint with different role requirements and claim keys
 @app.get("/yet-another-secure-endpoint")
 @secure_route(required_roles=["superadmin"], role_key='permissions')
-async def another_secure_endpoint():
+async def yet_another_secure_endpoint():
     return {"message": "You have access to this secure endpoint as an admin or editor."}
 
 # Define another endpoint that only validates the
 # JWT and does not have any role requirements
 @app.get("/yet-even-another-secure-endpoint")
 @secure_route()
-async def another_secure_endpoint():
+async def yet_even_another_secure_endpoint():
     return {"message": "You have access to this secure endpoint as an admin or editor."}
 
 # Define a public endpoint without authentication
@@ -229,15 +229,15 @@ async def another_secure_endpoint():
 # Define another secure endpoint with different role requirements and claim keys
 @app.get("/yet-another-secure-endpoint")
 @secure_route(required_roles=["superadmin"], role_key='permissions')
-async def another_secure_endpoint():
+async def yet_another_secure_endpoint():
     return {"message": "You have access to this secure endpoint as an admin or editor."}
 
 # Define another endpoint that only validates the
 # JWT and does not have any role requirements
-@app.get("/yet-another-secure-endpoint")
+@app.get("/and-yet-another-secure-endpoint")
 @secure_route()
-async def another_secure_endpoint():
-    return {"message": "You have access to this secure endpoint as an admin or editor."}
+async def and_yet_another_secure_endpoint():
+    return {"message": "You have access to this secure endpoint but roles were not checked."}
 
 # Define a public endpoint without authentication
 # to avoid jwt auth, the path must be defined in the
@@ -257,7 +257,7 @@ async def public_endpoint():
 | jwks_ttl | Time-to-live for the JWKS cache (in seconds). | 3600 |
 | oidc_ttl | Time-to-live for the OIDC configuration cache (in seconds). | 3600 |
 | token_cache_maxsize | Maximum size of the token cache. | 1000 |
-| logger | Logger for debug information during the authentication lifecycle. | logging.Logger |
+| logger | Logger for debug information during the authentication lifecycle. This logger must implement the LoggerProtocol contract exported from this project to be used. Only debug messages are propagated from this library if the logger's debug flag is enabled. Key: LOG_LEVEL from env. | logging.Logger |
 | excluded_paths | Paths which should remain public for your application and do not require authentication. | [] |
 | roles_key | Default roles key for your `@secure_route` routes within your application. If the route is not in the excluded paths it will still execute jwt auth and require a valid token. | "roles" | 
 
@@ -272,26 +272,71 @@ from fast_api_jwt_middleware.wrapper import secure_route
 
 # secured endpoint, uses the default roles_key in the
 # middleware or the "roles" claim on the token
-@app.get("/secure-endpoint")
+@app.get("/api/secured-endpoint-roles-check")
 @secure_route(required_roles="admin")
-async def secure_endpoint():
+async def secure_endpoint_roles_check():
     return {"message": "You have access to this secure endpoint."}
 
 # secured endpoint, uses the roles_key from the route
 # in place of the default roles key from the middleware
-@app.get("/secure-endpoint")
+@app.get("/secure-endpoint-different-roles-key")
 @secure_route(required_roles="admin", roles_key='permissions')
-async def secure_endpoint():
+async def secure_endpoint_different_roles_key():
     return {"message": "You have access to this secure endpoint."}
 
-#unsecured endpoint, if a token is passed it will still be cached
-@app.get("/secure-endpoint")
-async def secure_endpoint():
+# This endpoint is still secured, if a token is passed it will
+# still be cached and validated.
+# The only way to avoid authentication on an endpoint is to
+# put it in the middleware's `excluded_paths` option
+@app.get("/secure-endpoint-no-options")
+async def secure_endpoint_no_options():
     return {"message": "You have access to this secure endpoint."}
 
 
 ```
 
+### Accessing Token Properties
+
+This library also will add the token properties to the request.state in fast api as a part of the authentication process. If you need to access specific information off of your token you will need to understand your token's structure and all properties are available on this state property. 
+
+This library uses pyjwt for decoding and authentication of tokens. With that being said the token properties that exist on the request.state.user are a direct copy of the output of the jwt.decode method.
+
+An example of how to access token properties:
+
+```python
+
+# Token claims can be accessed on any endpoint
+# when the middleware is in use and the path is
+# not in the `excluded_paths` option in the middleware
+# setup.
+# This is the object that is returned from the
+# pyjwt decode operation. 
+# All claims from your token exist on the Request
+# state in FastAPI.
+# 
+# You must have a request parameter for your
+# implementation to access the request.state   
+@app.get("/secure-endpoint-no-options")
+async def secure_endpoint_no_options(request: Request):
+    # grab the user from state
+    user_token_object = request.state.user
+
+    # access properties
+    email = user_token_object['email']
+    sub = user_token_object['sub']
+    issuer = user_token_object['iss']
+    audience = user_token_object['aud']
+    expiration = user_token_object['exp']
+
+    # assuming you have roles on your token
+    roles = user_token_object['roles']
+
+    # if you have specific roles on the object, or other properties
+    # you can access them from the state object
+    some_custom_property = user_token_object['your-claim-property-name']
+    return {"message": f"You have access to this endpoint, your email is {email}, token expires at {expiration}"}
+
+```
 
 ### Cache operations
 
@@ -347,6 +392,17 @@ The middleware returns the following HTTP responses:
 - `401 Unauthorized`: The token is invalid or missing.
 - `403 Forbidden`: The user token does not meet the requirements of the security context.
 - `500 Internal Server Error`: Issues occurred when fetching OIDC configurations or JWKS.
+
+### Expected Exceptions
+
+| Exception Type | Meaning | Resolution / Root Cause | Source File | Process | Expected Messages |
+|----------------|---------|-------------------------|--------------|---------|-------------------|
+| `ValueError`   | Raised when an invalid value is provided, such as an unknown provider name or missing required fields. | Check the input values for correctness and ensure all required fields are provided. | `OIDCHelper` | `get_oidc_urls` | "Unknown provider '{provider_name}'." <br> "Missing required fields {missing_fields} for {provider_name}." |
+| `TypeError`    | Raised when an argument of an inappropriate type is passed, such as a logger that does not implement the required protocol. | Ensure that the correct types are used for all parameters, especially for custom loggers. | `AuthMiddleware` | `__init__` | "Logger must implement the logging protocol." |
+| `InvalidTokenError` | Raised when the provided JWT token is invalid or cannot be decoded. | Verify that the token is correctly formatted and valid. | `AuthMiddleware` | `decode_token` | "No token provided." <br> "Token is invalid." <br> "Invalid token: Key not found." |
+| `ExpiredSignatureError` | Raised when the JWT token has expired. | Ensure that the token is refreshed or reissued before it expires. | `AuthMiddleware` | `decode_token` | "Token has expired." |
+| `HTTPException` | Raised when access is denied due to insufficient roles or other authorization issues. | Check the user's roles against the required roles for the endpoint. | `fast_api_jwt_middleware/wrapper.py` | `@secure_route` or `do_role_check` | "You do not have the required role(s) to access this resource." <br> "User information not received in the request." |
+
 
 ## Dependencies
 
