@@ -1,5 +1,3 @@
-# tests/test_multi_provider_auth_middleware.py
-
 import unittest
 from unittest.mock import patch, Mock, MagicMock
 from unittest import IsolatedAsyncioTestCase
