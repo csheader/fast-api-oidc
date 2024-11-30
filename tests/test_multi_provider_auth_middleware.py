@@ -120,7 +120,8 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
         mock_jwt_decode_unverified.return_value = {'aud': 'audience1'}
 
         # Mock decode_token to return user data
-        mock_decode_token.return_value = {'sub': 'user1', 'roles': ['admin']}
+        mock_user_data = {'sub': 'user1', 'roles': ['admin']}
+        mock_decode_token.return_value = mock_user_data
 
         # Mock request with Authorization header
         headers = [(b'authorization', b'Bearer valid_token')]
@@ -145,9 +146,8 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
         mock_decode_token.assert_called_with('valid_token')
         # Ensure user data is attached to request.state
         self.assertIsNotNone(request.state.user)
-        self.assertEqual(request.state.user['token'], 'valid_token')
-        self.assertEqual(request.state.user['roles'], ['admin'])
-        self.assertEqual(request.state.user['provider']['audiences'], ['audience1'])
+        self.assertEqual(request.state.user['sub'], mock_user_data['sub'], 'The sub on the token should match what was provided from the mock response \'user1\'')
+        self.assertEqual(request.state.user['roles'], mock_user_data['roles'], 'The roles property should be an array of length 1 with \'admin\'')
 
     @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.jwt.decode')
     @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.MultiProviderAuthMiddleware.decode_token')

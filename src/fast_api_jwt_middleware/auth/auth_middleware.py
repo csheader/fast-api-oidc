@@ -59,10 +59,21 @@ class AuthMiddleware(BaseHTTPMiddleware):
         :param logger: An optional logger instance for logging authentication-related messages. If not provided, a default logger will be used.
         :param excluded_paths: A list of paths that should be excluded from authentication checks (default is an empty list).
         :param roles_key: The default location for your roles within your authentication context. (default is 'roles')
+        :raises ValueError: If no OIDC Url or Audience is provided a Value Error is thrown to notify the caller
+        :raises TypeError: If the LoggerProtocol is not implemented on your logger a typeerror will be thrown
         '''
         super().__init__(app)
+        # An OIDC url is required to run this middleware. If there is not
+        # at least one OIDC url, we should throw an error.
+        if not oidc_urls or not isinstance(oidc_urls, list) or not all(oidc_urls):
+            raise ValueError("Parameter 'oidc_urls' must be a non-empty list of OIDC URLs.")
+        
+        # We do not want to allow authentication without a provided audience.
+        # Throw a value error if no audience was provided.
+        if not audiences or not isinstance(audiences, list) or not all(audiences):
+            raise ValueError("Parameter 'audiences' must be a non-empty list of audience strings.")
         if logger is None:
-            print('No logger provided. Using default logger.')
+            print('No logger has been provided to the OIDC Middleware. It is recommended that you provider a logger instance to the middleware. Using default logger.')
             self.logger = logging.getLogger(__name__)
         else:
             if not isinstance(logger, LoggerProtocol):
