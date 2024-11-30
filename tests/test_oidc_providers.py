@@ -3,7 +3,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-from fast_api_jwt_middleware.oidc_providers import (
+from fast_api_jwt_middleware.oidc.oidc_providers import (
     register_custom_provider,
     get_registered_providers,
     OIDCProvider,

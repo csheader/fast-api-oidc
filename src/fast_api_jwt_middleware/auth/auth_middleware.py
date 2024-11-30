@@ -8,9 +8,10 @@ import requests
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from typing import List, Dict, Union, Optional
-from fast_api_jwt_middleware.logger_protocol_contract import LoggerProtocol
+from fast_api_jwt_middleware.logger.logger_protocol_contract import LoggerProtocol
+from fast_api_jwt_middleware.cache.cache_protocol_contract import CacheProtocol
 from fast_api_jwt_middleware.context_holder import request_context
-from fast_api_jwt_middleware.token_cache_singleton import TokenCacheSingleton 
+from fast_api_jwt_middleware.cache.token_cache_singleton import TokenCacheSingleton 
 
 class AuthMiddleware(BaseHTTPMiddleware):
     '''
@@ -39,6 +40,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         token_ttl: int = 300,
         jwks_ttl: int = 3600,
         oidc_ttl: int = 3600,
+        custom_token_cache: Optional[CacheProtocol] = None,
         token_cache_maxsize: int = 1000,
         logger: Optional[LoggerProtocol] = None,
         excluded_paths: List[str] = [],
@@ -70,7 +72,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self.audiences: List[str] = audiences
         self.excluded_paths = excluded_paths
         self.roles_key = roles_key
-        self.token_cache = TokenCacheSingleton.get_instance(
+        self.token_cache = custom_token_cache or TokenCacheSingleton.get_instance(
             maxsize=token_cache_maxsize,
             ttl=token_ttl,
             logger=self.logger

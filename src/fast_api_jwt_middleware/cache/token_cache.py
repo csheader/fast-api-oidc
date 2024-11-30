@@ -1,5 +1,3 @@
-# token_cache.py
-
 import logging
 from cachetools import TTLCache
 from typing import Any, Optional
