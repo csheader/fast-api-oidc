@@ -83,7 +83,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self.audiences: List[str] = audiences
         self.excluded_paths = excluded_paths
         self.roles_key = roles_key
-        self.token_cache = custom_token_cache or TokenCacheSingleton.get_instance(
+        if custom_token_cache is not None:
+            TokenCacheSingleton.set_custom_cache(custom_token_cache)
+        self.token_cache = TokenCacheSingleton.get_instance(
             maxsize=token_cache_maxsize,
             ttl=token_ttl,
             logger=self.logger

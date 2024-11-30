@@ -36,3 +36,7 @@ classifiers = [
 [tool.setuptools.packages.find]
 where = ["src"]
 exclude = ["tests/*"]
+
+[project.urls]
+Homepage = "https://github.com/csheader/fast-api-oidc"
+Issues = "https://github.com/csheader/fast-api-oidc/issues"

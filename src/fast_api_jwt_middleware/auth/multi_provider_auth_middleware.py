@@ -37,6 +37,7 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
         token_ttl: int = 300,
         jwks_ttl: int = 3600,
         oidc_ttl: int = 3600,
+        custom_token_cache: Optional[CacheProtocol] = None,
         token_cache_maxsize: int = 1000,
         logger: Optional[LoggerProtocol] = None,
         excluded_paths: List[str] = [],
@@ -65,7 +66,7 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
                          audiences=audiences, 
                          token_ttl=token_ttl, jwks_ttl=jwks_ttl, oidc_ttl=oidc_ttl,
                          token_cache_maxsize=token_cache_maxsize, logger=logger,
-                         excluded_paths=excluded_paths, roles_key=roles_key)
+                         excluded_paths=excluded_paths, roles_key=roles_key, custom_token_cache=custom_token_cache)
         self.providers = providers
 
     def get_provider_for_token(self, token: str) -> Optional[Dict]:

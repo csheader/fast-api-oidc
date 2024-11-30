@@ -63,6 +63,11 @@ The following OIDC providers are currently supported by default by this library,
 - `get_oidc_urls(domains_or_configs: List[dict] | dict, provider_name: str)`: Constructs OIDC discovery URLs for both built-in and custom providers.
 - `register_custom_provider(name: str, url_template: str, required_fields: List[str])`: Registers a custom OIDC provider.
 
+### Protocols
+
+- `LoggerProtocol`: Provides the contract for the required methods on a Logger that is passed to the middleware. By default all messages are written to the debug level.
+- `CacheProtocol`: Provides the contract for the required methods on a TokenCache object that is passed to the middleware. By default a cachetools TTLCache is used for caching tokens for this package.
+
 
 ### Using `get_oidc_urls`
 
@@ -257,6 +262,7 @@ async def public_endpoint():
 | jwks_ttl | Time-to-live for the JWKS cache (in seconds). | 3600 |
 | oidc_ttl | Time-to-live for the OIDC configuration cache (in seconds). | 3600 |
 | token_cache_maxsize | Maximum size of the token cache. | 1000 |
+| custom_token_cache | Your own implementation of the `CacheProtocol` for handling and caching tokens. | None |
 | logger | Logger for debug information during the authentication lifecycle. This logger must implement the LoggerProtocol contract exported from this project to be used. Only debug messages are propagated from this library if the logger's debug flag is enabled. Key: LOG_LEVEL from env. | logging.Logger |
 | excluded_paths | Paths which should remain public for your application and do not require authentication. | [] |
 | roles_key | Default roles key for your `@secure_route` routes within your application. If the route is not in the excluded paths it will still execute jwt auth and require a valid token. | "roles" | 
@@ -384,6 +390,83 @@ token_list = TokenCacheSingleton.list_tokens(page=1, page_size=100)
 TokenCacheSingleton.clear()
 
 ```
+
+### BYOC (Bring Your Own Cache)
+
+This library supports injecting your own cache provider into the AuthMiddleware. If you would like to inject your own caching handler and not use the default TokenCache created within this library your cache provider must meet the CacheProtocol contract.
+
+The CacheProtocol contract defines the properties which are required for the TokenCacheSingleton to manage the cache. 
+
+An example of this implementation is below:
+
+`memory_cache.py`
+
+```python
+
+# In Memory Token Cache implementation for providing your own cache
+# For this example this file will be in a file named memory_cache.py
+from typing import Any, Optional, Dict
+from fast_api_jwt_middleware import CacheProtocol
+
+class InMemoryTokenCache(CacheProtocol):
+    def __init__(self) -> None:
+        self._cache: Dict[str, Any] = {}
+
+    def add_token(self, token: str, value: Any) -> None:
+        self._cache[token] = value
+
+    def get_token(self, token: str) -> Optional[Any]:
+        return self._cache.get(token)
+
+    def remove_token(self, token: str) -> bool:
+        if token in self._cache:
+            del self._cache[token]
+            return True
+        return False
+
+    def clear(self) -> None:
+        self._cache.clear()
+
+    def list_tokens(self, page: int = 1, page_size: int = 10) -> Dict[str, Any]:
+        start = (page - 1) * page_size
+        end = start + page_size
+        return dict(list(self._cache.items())[start:end])
+```
+
+`app.py`
+
+```python
+from fastapi import FastAPI
+from fast_api_jwt_middleware import AuthMiddleware
+from fast_api_jwt_middleware.cache.in_memory_cache import InMemoryTokenCache
+from fast_api_jwt_middleware.oidc_helper import get_oidc_urls
+
+app = FastAPI()
+
+# Create an instance of your custom cache
+custom_cache = InMemoryTokenCache()
+
+# Example OIDC configuration
+oidc_config = {
+    "tenant": "your-tenant-name",
+    "policy": "policy1"
+}
+
+# Get OIDC URL for Azure AD B2C
+oidc_url = get_oidc_urls(domains_or_configs=oidc_config, provider_name="AZURE_AD_B2C")
+
+# Add the AuthMiddleware to the FastAPI app with the custom cache
+app.add_middleware(
+    AuthMiddleware,
+    oidc_urls=[oidc_url],
+    audiences=["your-client-id"],  # Replace with your actual client ID
+    roles_key="roles",
+    excluded_paths=["/public-endpoint"],
+    token_cache=custom_cache  # Injecting the custom cache
+)
+```
+
+This is just an example of how to use the cache protocol. It is more likely that you would like to inject a centralized cache of some sort using redis or memcached for your caching layer. However, the steps remain the same for injecting this type of cache.
 
 
 ## Error Handling
