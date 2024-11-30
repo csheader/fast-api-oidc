@@ -87,8 +87,8 @@ class TokenCache:
         
         # figure out the total number of pages
         total_tokens = len(all_tokens)
-        self.logger.debug(f'Total tokens in cache: {total_tokens}, Total pages: {total_pages}')
         total_pages = (total_tokens + page_size - 1) // page_size
+        self.logger.debug(f'Total tokens in cache: {total_tokens}, Total pages: {total_pages}')
         start_index = (page - 1) * page_size
         end_index = start_index + page_size
         self.logger.debug(f'Retrieving tokens for page {page}: start index {start_index}, end index {end_index}')

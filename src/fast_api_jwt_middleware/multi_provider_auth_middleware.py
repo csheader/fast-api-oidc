@@ -1,5 +1,4 @@
 
-from contextvars import ContextVar
 from fastapi import Request
 from fastapi.responses import JSONResponse
 import jwt
