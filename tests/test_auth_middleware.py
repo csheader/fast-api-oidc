@@ -7,8 +7,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.types import Scope, Receive, Send
 import logging
-from jwt import ExpiredSignatureError, InvalidTokenError
-import asyncio
+from jwt import InvalidTokenError
 
 # Import the AuthMiddleware from the src directory
 import sys
