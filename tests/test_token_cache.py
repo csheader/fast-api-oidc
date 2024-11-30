@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from fast_api_jwt_middleware.token_cache import TokenCache
+from fast_api_jwt_middleware.cache.token_cache import TokenCache
 
 class TestTokenCache(unittest.TestCase):
 

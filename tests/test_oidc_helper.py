@@ -3,7 +3,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-from fast_api_jwt_middleware.oidc_helper import get_oidc_urls
+from fast_api_jwt_middleware.oidc.oidc_helper import get_oidc_urls
 
 class TestOIDCHelper(unittest.TestCase):
 

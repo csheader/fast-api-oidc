@@ -8,9 +8,10 @@ import requests
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from typing import List, Dict, Union, Optional
-from fast_api_jwt_middleware.logger_protocol_contract import LoggerProtocol
+from fast_api_jwt_middleware.logger.logger_protocol_contract import LoggerProtocol
+from fast_api_jwt_middleware.cache.cache_protocol_contract import CacheProtocol
 from fast_api_jwt_middleware.context_holder import request_context
-from fast_api_jwt_middleware.token_cache_singleton import TokenCacheSingleton 
+from fast_api_jwt_middleware.cache.token_cache_singleton import TokenCacheSingleton 
 
 class AuthMiddleware(BaseHTTPMiddleware):
     '''
@@ -39,6 +40,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         token_ttl: int = 300,
         jwks_ttl: int = 3600,
         oidc_ttl: int = 3600,
+        custom_token_cache: Optional[CacheProtocol] = None,
         token_cache_maxsize: int = 1000,
         logger: Optional[LoggerProtocol] = None,
         excluded_paths: List[str] = [],
@@ -57,10 +59,21 @@ class AuthMiddleware(BaseHTTPMiddleware):
         :param logger: An optional logger instance for logging authentication-related messages. If not provided, a default logger will be used.
         :param excluded_paths: A list of paths that should be excluded from authentication checks (default is an empty list).
         :param roles_key: The default location for your roles within your authentication context. (default is 'roles')
+        :raises ValueError: If no OIDC Url or Audience is provided a Value Error is thrown to notify the caller
+        :raises TypeError: If the LoggerProtocol is not implemented on your logger a typeerror will be thrown
         '''
         super().__init__(app)
+        # An OIDC url is required to run this middleware. If there is not
+        # at least one OIDC url, we should throw an error.
+        if not oidc_urls or not isinstance(oidc_urls, list) or not all(oidc_urls):
+            raise ValueError("Parameter 'oidc_urls' must be a non-empty list of OIDC URLs.")
+        
+        # We do not want to allow authentication without a provided audience.
+        # Throw a value error if no audience was provided.
+        if not audiences or not isinstance(audiences, list) or not all(audiences):
+            raise ValueError("Parameter 'audiences' must be a non-empty list of audience strings.")
         if logger is None:
-            print('No logger provided. Using default logger.')
+            print('No logger has been provided to the OIDC Middleware. It is recommended that you provider a logger instance to the middleware. Using default logger.')
             self.logger = logging.getLogger(__name__)
         else:
             if not isinstance(logger, LoggerProtocol):
@@ -70,7 +83,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self.audiences: List[str] = audiences
         self.excluded_paths = excluded_paths
         self.roles_key = roles_key
-        self.token_cache = TokenCacheSingleton.get_instance(
+        self.token_cache = custom_token_cache or TokenCacheSingleton.get_instance(
             maxsize=token_cache_maxsize,
             ttl=token_ttl,
             logger=self.logger

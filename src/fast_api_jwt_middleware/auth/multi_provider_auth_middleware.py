@@ -4,9 +4,10 @@ from fastapi.responses import JSONResponse
 import jwt
 from starlette.types import ASGIApp
 from typing import List, Dict, Union, Optional
-from fast_api_jwt_middleware.auth_middleware import AuthMiddleware
+from fast_api_jwt_middleware.auth.auth_middleware import AuthMiddleware
+from fast_api_jwt_middleware.cache.cache_protocol_contract import CacheProtocol
 from fast_api_jwt_middleware.context_holder import request_context
-from fast_api_jwt_middleware.logger_protocol_contract import LoggerProtocol
+from fast_api_jwt_middleware.logger.logger_protocol_contract import LoggerProtocol
 
 class MultiProviderAuthMiddleware(AuthMiddleware):
     '''
@@ -27,6 +28,7 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
         token_cache_maxsize (int): The maximum size of the token cache (default is 1000).
         logger (Optional[logging.Logger]): A logger instance for logging authentication-related messages. If not provided, a default logger will be used.
         excluded_paths (List[str]): A list of paths to exclude from authentication (default is an empty list).
+        roles_key (str): The default claim on the token for authenticating with the providers for your api routes (default is 'roles')
     '''
     def __init__(
         self,
@@ -40,9 +42,30 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
         excluded_paths: List[str] = [],
         roles_key: str = 'roles'
     ) -> None:
-        super().__init__(app, [provider['oidc_urls'] for provider in providers], 
-                         [provider['audiences'] for provider in providers], 
-                         token_ttl, jwks_ttl, oidc_ttl, token_cache_maxsize, logger, excluded_paths=excluded_paths, roles_key=roles_key)
+        oidc_urls = [
+            url
+            for provider in providers
+            for url in (
+                provider['oidc_urls']
+                if isinstance(provider['oidc_urls'], list)
+                else [provider['oidc_urls']]
+            )
+        ]
+        audiences = [
+            audience
+            for provider in providers
+            for audience in (
+                provider['audiences']
+                if isinstance(provider['audiences'], list)
+                else [provider['audiences']]
+            )
+        ]
+        
+        super().__init__(app=app, oidc_urls=oidc_urls, 
+                         audiences=audiences, 
+                         token_ttl=token_ttl, jwks_ttl=jwks_ttl, oidc_ttl=oidc_ttl,
+                         token_cache_maxsize=token_cache_maxsize, logger=logger,
+                         excluded_paths=excluded_paths, roles_key=roles_key)
         self.providers = providers
 
     def get_provider_for_token(self, token: str) -> Optional[Dict]:
@@ -66,11 +89,7 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
             if provider:
                 try:
                     user_data = self.decode_token(token)  # Use the base class method
-                    request.state.user = {
-                        'token': token,
-                        'roles': user_data.get(provider.get('roles_key', 'roles'), []),
-                        'provider': provider,
-                    }
+                    request.state.user = user_data
                     request_context.set(request)
                     return await call_next(request)
                 except Exception as e:

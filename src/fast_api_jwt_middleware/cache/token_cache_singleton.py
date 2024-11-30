@@ -1,4 +1,4 @@
-from fast_api_jwt_middleware.token_cache import TokenCache
+from fast_api_jwt_middleware.cache.token_cache import TokenCache
 from typing import Any, Optional
 
 class TokenCacheSingleton:
