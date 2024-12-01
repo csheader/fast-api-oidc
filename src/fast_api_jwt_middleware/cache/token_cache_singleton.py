@@ -1,5 +1,5 @@
-from fast_api_oidc.cache.cache_protocol_contract import CacheProtocol
-from fast_api_oidc.cache.token_cache import TokenCache
+from fast_api_jwt_middleware.cache.cache_protocol_contract import CacheProtocol
+from fast_api_jwt_middleware.cache.token_cache import TokenCache
 from typing import Any, Optional
 
 class TokenCacheSingleton:

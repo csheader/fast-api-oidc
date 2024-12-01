@@ -13,8 +13,8 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from fast_api_oidc.auth.auth_middleware import AuthMiddleware
-from fast_api_oidc.logger.logger_protocol_contract import LoggerProtocol
+from fast_api_jwt_middleware.auth.auth_middleware import AuthMiddleware
+from fast_api_jwt_middleware.logger.logger_protocol_contract import LoggerProtocol
 
 # Mock logger that implements LoggerProtocol
 class MockLogger(LoggerProtocol):
@@ -31,7 +31,7 @@ class MockLogger(LoggerProtocol):
 
 class TestAuthMiddleware(IsolatedAsyncioTestCase):
 
-    @patch('fast_api_oidc.auth.auth_middleware.requests.get')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.requests.get')
     def setUp(self, mock_requests_get):
         # Mock the response of requests.get during instantiation
         mock_oidc_config_response = Mock()
@@ -55,7 +55,7 @@ class TestAuthMiddleware(IsolatedAsyncioTestCase):
             logger=self.logger
         )
 
-    @patch('fast_api_oidc.auth.auth_middleware.requests.get')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.requests.get')
     def test_get_oidc_config(self, mock_get):
         """
         Test get_oidc_config method to ensure it fetches and caches OIDC configuration.
@@ -76,7 +76,7 @@ class TestAuthMiddleware(IsolatedAsyncioTestCase):
         # Ensure that the result is cached
         self.assertIn(self.oidc_urls[0], self.middleware.oidc_config_cache)
 
-    @patch('fast_api_oidc.auth.auth_middleware.requests.get')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.requests.get')
     def test_get_jwks(self, mock_get):
         """
         Test get_jwks method to ensure it fetches and caches JWKS data.
@@ -98,10 +98,10 @@ class TestAuthMiddleware(IsolatedAsyncioTestCase):
         # Verify that requests.get was called once
         mock_get.assert_called_once_with('https://example.com/jwks')
 
-    @patch('fast_api_oidc.auth.auth_middleware.jwt.PyJWK')
-    @patch('fast_api_oidc.auth.auth_middleware.jwt.decode')
-    @patch('fast_api_oidc.auth.auth_middleware.jwt.get_unverified_header')
-    @patch('fast_api_oidc.auth.auth_middleware.requests.get')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.jwt.PyJWK')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.jwt.decode')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.jwt.get_unverified_header')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.requests.get')
     def test_decode_token(self, mock_requests_get, mock_get_unverified_header, mock_jwt_decode, mock_PyJWK):
         """
         Test decode_token method to ensure it decodes and validates JWT tokens.
@@ -172,7 +172,7 @@ class TestAuthMiddleware(IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 401)
         self.assertIn('No token provided', response.body.decode())
 
-    @patch('fast_api_oidc.auth.auth_middleware.AuthMiddleware.decode_token')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.AuthMiddleware.decode_token')
     async def test_dispatch_valid_token(self, mock_decode_token):
         """
         Test dispatch method with a valid token.
@@ -197,7 +197,7 @@ class TestAuthMiddleware(IsolatedAsyncioTestCase):
         # Ensure user data is attached to request.state
         self.assertEqual(request.state.user, {'sub': 'user1'}, 'The method should have been called with our fake user.')
 
-    @patch('fast_api_oidc.auth.auth_middleware.AuthMiddleware.decode_token')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.AuthMiddleware.decode_token')
     async def test_dispatch_invalid_token(self, mock_decode_token):
         """
         Test dispatch method when decode_token raises an InvalidTokenError.
@@ -227,7 +227,7 @@ class TestAuthMiddleware(IsolatedAsyncioTestCase):
         Test that default logger is used when none is provided.
         """
         # Mock all the things.
-        with patch('fast_api_oidc.auth.auth_middleware.requests.get') as mock_get:
+        with patch('fast_api_jwt_middleware.auth.auth_middleware.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
@@ -256,7 +256,7 @@ class TestAuthMiddleware(IsolatedAsyncioTestCase):
                 logger='invalid_logger'
             )
 
-    @patch('fast_api_oidc.auth.auth_middleware.requests.get')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.requests.get')
     def test_get_oidc_config_cache(self, mock_get):
         """
         Test that get_oidc_config uses the cache after the first call.
@@ -276,7 +276,7 @@ class TestAuthMiddleware(IsolatedAsyncioTestCase):
         self.assertEqual(oidc_config_second['issuer'], 'https://example.com')
         mock_get.assert_not_called()
 
-    @patch('fast_api_oidc.auth.auth_middleware.jwt.get_unverified_header')
+    @patch('fast_api_jwt_middleware.auth.auth_middleware.jwt.get_unverified_header')
     def test_decode_token_cached(self, mock_get_unverified_header):
         """
         Test that decode_token uses the cache if the token is already cached.
