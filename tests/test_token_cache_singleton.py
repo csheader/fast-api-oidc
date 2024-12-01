@@ -52,4 +52,16 @@ class TestTokenCacheSingleton(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    loader = unittest.TestLoader()
+    loader.sortTestMethodsUsing = None
+    # Order the tests in this file so that they do not impact
+    # eachother since this class is a singleton
+    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_singleton_instance)
+    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_add_token)
+    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_get_token_not_found)
+    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_remove_token)
+    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_remove_token_not_found)
+    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_remove_all)
+    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_clear_cache)
+    runner = unittest.TextTestRunner(verbosity=2)
+    runner.run(suite)
