@@ -179,7 +179,7 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
         response = await self.middleware.dispatch(request, call_next)
 
         self.assertEqual(response.status_code, 401)
-        self.assertIn('Invalid or unauthorized token', response.body.decode())
+        self.assertIn('Invalid token', response.body.decode())
 
     async def test_dispatch_no_token(self):
         """
@@ -201,10 +201,8 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
 
         response = await self.middleware.dispatch(request, call_next)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.body.decode(), '{"message":"No Token"}')
-        # Ensure user data is None
-        self.assertIsNone(request.state.user)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.body.decode(), '{"detail":"No token provided."}')
 
     @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.jwt.decode')
     async def test_dispatch_no_matching_provider(self, mock_jwt_decode_unverified):
@@ -265,8 +263,8 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
 
         response = await self.middleware.dispatch(request, call_next)
 
-        self.assertEqual(response.status_code, 401)
-        self.assertIn('Invalid or unauthorized token', response.body.decode())
+        self.assertEqual(response.status_code, 500)
+        self.assertIn('An error occurred during authentication. Please try again.', response.body.decode())
 
 if __name__ == '__main__':
     unittest.main()

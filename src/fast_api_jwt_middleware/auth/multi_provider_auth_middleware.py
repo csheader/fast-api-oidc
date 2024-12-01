@@ -83,7 +83,11 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
         '''
         Middleware handler to authenticate and attach user info to the request state.
         '''
+        if request.url.path in self.excluded_paths:
+            return await call_next(request)
         token = request.headers.get('Authorization')
+        if not token:
+            return JSONResponse(status_code=401, content={'detail': 'No token provided.'})
         if token:
             token = token.replace('Bearer ', '')
             provider = self.get_provider_for_token(token)
@@ -93,9 +97,15 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
                     request.state.user = user_data
                     request_context.set(request)
                     return await call_next(request)
+                except jwt.ExpiredSignatureError:
+                    return JSONResponse(status_code=401, content={'detail': 'Token has expired. Please log in again.'})
+                except jwt.InvalidTokenError as e:
+                    self.logger.error(f'Invalid token error: {str(e)}')
+                    return JSONResponse(status_code=401, content={'detail': str(e)})
                 except Exception as e:
-                    self.logger.error(f'Authentication failed: {e}')
-                    return JSONResponse({'detail': 'Invalid or unauthorized token'}, status_code=401)
+                    self.logger.error(f'Authentication error: {str(e)}')
+                    return JSONResponse(status_code=500, content={'detail': 'An error occurred during authentication. Please try again.'})
+
 
         # No token or no matching provider
         request.state.user = None
