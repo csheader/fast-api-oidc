@@ -227,7 +227,7 @@ class TestAuthMiddleware(IsolatedAsyncioTestCase):
         Test that default logger is used when none is provided.
         """
         # Mock all the things.
-        with patch('fast_api_oidc.auth.auth_middleware.requests.get') as mock_get:
+        with patch('fast_api_jwt_middleware.auth.auth_middleware.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
