@@ -34,6 +34,16 @@ The following classes and functions are available for use in this package:
   - `TokenCacheSingleton`: A singleton class that provides a global access point to a `TokenCache` instance.
   - `OIDCProvider`: Enum representing various OpenID Connect (OIDC) providers.
 
+### Functions
+
+- `get_oidc_urls(domains_or_configs: List[dict] | dict, provider_name: str)`: Constructs OIDC discovery URLs for both built-in and custom providers.
+- `register_custom_provider(name: str, url_template: str, required_fields: List[str])`: Registers a custom OIDC provider.
+
+### Protocols
+
+- `LoggerProtocol`: Provides the contract for the required methods on a Logger that is passed to the middleware. By default all messages are written to the debug level.
+- `CacheProtocol`: Provides the contract for the required methods on a TokenCache object that is passed to the middleware. By default a cachetools TTLCache is used for caching tokens for this package.
+
 ### Supported OIDC Providers
 
 The following OIDC providers are currently supported by default by this library, if it is not listed below please open an issue or create a PR to add it. Note that only OIDC providers will be supported by this library:
@@ -58,18 +68,12 @@ The following OIDC providers are currently supported by default by this library,
 
 >This list is limited, but you can use the GENERIC provider in a lot of contexts or create your own CUSTOMPROVIDER to handle your specific situation.
 
-### Functions
-
-- `get_oidc_urls(domains_or_configs: List[dict] | dict, provider_name: str)`: Constructs OIDC discovery URLs for both built-in and custom providers.
-- `register_custom_provider(name: str, url_template: str, required_fields: List[str])`: Registers a custom OIDC provider.
-
-### Protocols
-
-- `LoggerProtocol`: Provides the contract for the required methods on a Logger that is passed to the middleware. By default all messages are written to the debug level.
-- `CacheProtocol`: Provides the contract for the required methods on a TokenCache object that is passed to the middleware. By default a cachetools TTLCache is used for caching tokens for this package.
-
 
 ### Using `get_oidc_urls`
+
+Fundamentally, authentication can be fairly complex. To provide a little bit of usability to this library we have provided a function to construct the oidc urls for you. 
+
+This function will return the formatted .wellknown endpoint for supported providers. Additionally, if you register a custom provider this function will continue to function as expected.
 
 The `get_oidc_urls` function constructs OIDC discovery URLs based on the provided configuration and provider name. Here’s how to use it:
 
@@ -263,7 +267,7 @@ async def public_endpoint():
 | oidc_ttl | Time-to-live for the OIDC configuration cache (in seconds). | 3600 |
 | token_cache_maxsize | Maximum size of the token cache. | 1000 |
 | custom_token_cache | Your own implementation of the `CacheProtocol` for handling and caching tokens. | None |
-| logger | Logger for debug information during the authentication lifecycle. This logger must implement the LoggerProtocol contract exported from this project to be used. Only debug messages are propagated from this library if the logger's debug flag is enabled. Key: LOG_LEVEL from env. | logging.Logger |
+| logger | Logger for debug information during the authentication lifecycle. This logger must implement the `LoggerProtocol` contract exported from this project to be used. Only debug messages are propagated from this library if the logger's debug flag is enabled. Key: LOG_LEVEL from env. | logging.Logger |
 | excluded_paths | Paths which should remain public for your application and do not require authentication. | [] |
 | roles_key | Default roles key for your `@secure_route` routes within your application. If the route is not in the excluded paths it will still execute jwt auth and require a valid token. | "roles" | 
 
@@ -480,7 +484,7 @@ The middleware returns the following HTTP responses:
 
 | Exception Type | Meaning | Resolution / Root Cause | Source File | Process | Expected Messages |
 |----------------|---------|-------------------------|--------------|---------|-------------------|
-| `ValueError`   | Raised when an invalid value is provided, such as an unknown provider name or missing required fields. | Check the input values for correctness and ensure all required fields are provided. | `OIDCHelper` | `get_oidc_urls` | "Unknown provider '{provider_name}'." <br> "Missing required fields {missing_fields} for {provider_name}." |
+| `ValueError`   | Raised when an invalid value is provided, such as an unknown provider name or missing required fields. | Check the input values for correctness and ensure all required fields are provided. | `OIDCHelper` | `get_oidc_urls` | "Unknown provider '{provider_name}'." <br> "Missing required fields {missing_fields} for {provider_name}." <br> "Parameter 'oidc_urls' must be a non-empty list of OIDC URLs." <br> "Parameter 'audiences' must be a non-empty list of audience strings."|
 | `TypeError`    | Raised when an argument of an inappropriate type is passed, such as a logger that does not implement the required protocol. | Ensure that the correct types are used for all parameters, especially for custom loggers. | `AuthMiddleware` | `__init__` | "Logger must implement the logging protocol." |
 | `InvalidTokenError` | Raised when the provided JWT token is invalid or cannot be decoded. | Verify that the token is correctly formatted and valid. | `AuthMiddleware` | `decode_token` | "No token provided." <br> "Token is invalid." <br> "Invalid token: Key not found." |
 | `ExpiredSignatureError` | Raised when the JWT token has expired. | Ensure that the token is refreshed or reissued before it expires. | `AuthMiddleware` | `decode_token` | "Token has expired." |
