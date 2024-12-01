@@ -51,7 +51,7 @@ def do_role_check(user, required_roles, roles_key):
     if allowed_roles and not any(role in user_roles for role in allowed_roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f'You do not have the required role(s) to access this resource. Required role(s): {', '.join(allowed_roles)}.'
+            detail=f"You do not have the required role(s) to access this resource. Required role(s): {', '.join(allowed_roles)}."
         )
 
 def secure_route(
