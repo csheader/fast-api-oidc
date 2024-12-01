@@ -11,6 +11,8 @@ from .utils.wrapper import secure_route
 __all__ = [
     AuthMiddleware,
     CacheProtocol,
+    get_oidc_urls,
+    get_registered_providers,
     LoggerProtocol,
     MultiProviderAuthMiddleware,
     OIDCProvider,
@@ -18,5 +20,4 @@ __all__ = [
     secure_route,
     TokenCache,
     TokenCacheSingleton,
-    get_oidc_urls,
 ]
