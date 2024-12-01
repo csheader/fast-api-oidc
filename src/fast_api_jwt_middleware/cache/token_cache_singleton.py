@@ -12,6 +12,7 @@ class TokenCacheSingleton:
 
     Attributes:
         _instance (TokenCache): The singleton instance of the TokenCache.
+        _custom_cache (CacheProtocol): A Singleton instance of the provided cache for interactions
     '''
     _instance = None
     _custom_cache: CacheProtocol = None  # Just in case the caller wants to supply their own cache
