@@ -35,7 +35,7 @@ classifiers = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-exclude = ["tests/*"]
+exclude = ["tests/*", "*/__pycache__/*"]
 
 [project.urls]
 Homepage = "https://github.com/csheader/fast-api-oidc"
