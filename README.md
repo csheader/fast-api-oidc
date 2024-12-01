@@ -129,6 +129,7 @@ custom_config = {
 oidc_urls = get_oidc_urls(domains_or_configs=custom_config, provider_name="CustomProvider")
 
 print(oidc_urls)
+# [https://CustomProvider/.well-known/openid-configuration/]
 ```
 
 ### Basic Setup with `AuthMiddleware`
