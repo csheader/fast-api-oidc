@@ -6,6 +6,8 @@
 
 `fast-api-auth-middleware` is a simple authentication middleware for FastAPI applications. It supports multiple OpenID Connect (OIDC) providers, including custom providers, and allows for role-based access control (RBAC) on routes.
 
+This library provides a fully featured RBAC set of controls for OIDC Identity Providers within the FastAPI ecosystem.
+
 ## Features
 
 - **Multiple OIDC Providers**: Supports built-in and custom OIDC providers.
@@ -39,14 +41,18 @@ The following classes and functions are available for use in this package:
 - `get_oidc_urls(domains_or_configs: List[dict] | dict, provider_name: str)`: Constructs OIDC discovery URLs for both built-in and custom providers.
 - `register_custom_provider(name: str, url_template: str, required_fields: List[str])`: Registers a custom OIDC provider.
 
-### Protocols
+### Interfaces / Protocols
 
-- `LoggerProtocol`: Provides the contract for the required methods on a Logger that is passed to the middleware. By default all messages are written to the debug level.
+Given that we, as software engineers, need flexibility we provide a way to provide your own logger and caching mechanism. These act like interfaces in other code, but we use them for DuckTyping in Python. These types define the contract that we expect for the logger and the token cache. 
+
+- `LoggerProtocol`: Provides the contract for the required methods on a Logger that is passed to the middleware. By default all messages are written to the debug level so your log_level will need to be set to "DEBUG" to see them for your provided logger type.
 - `CacheProtocol`: Provides the contract for the required methods on a TokenCache object that is passed to the middleware. By default a cachetools TTLCache is used for caching tokens for this package.
 
 ### Supported OIDC Providers
 
-The following OIDC providers are currently supported by default by this library, if it is not listed below please open an issue or create a PR to add it. Note that only OIDC providers will be supported by this library:
+The following OIDC providers are currently supported by default by this library, if it is not listed below please open an issue or create a PR to add it. If the provider is widely used then we will add it to the default list. You can always use the Generic provider or create your own [CUSTOMPROVIDER](#registering-custom-oidc-providers) in the interim if the provider does not currently exist within the supported OIDC provider list.
+
+Note that only OIDC providers will be supported by this library:
 
 | Provider Type         | ENUM Value | URL Template                                                                                          | Required Inputs                |
 | --------------------- | ----- |----------------------------------------------------------------------------------------------------- | ------------------------------ |
@@ -75,10 +81,12 @@ Fundamentally, authentication can be fairly complex. To provide a little bit of 
 
 This function will return the formatted .wellknown endpoint for supported providers. Additionally, if you register a custom provider this function will continue to function as expected.
 
+The `get_oidc_urls` function is a convenience method for users who do not know how to format their .wellknown url for their provider. These url's are consistent depending on your IdP and can be configured appropriately. Given the number of potential combinations and providers it is likely that yours may not exist in this list. If this is the case, you will want to use a GENERIC provider, or a [CUSTOMPROVIDER](#registering-custom-oidc-providers). As always, if you feel that the provider should be added to the default list please open an issue to have it added to the default list.
+
 The `get_oidc_urls` function constructs OIDC discovery URLs based on the provided configuration and provider name. Here’s how to use it:
 
 ```python
-from fast_api_jwt_middleware.oidc_helper import get_oidc_urls
+from fast_api_jwt_middleware import get_oidc_urls
 
 # Example configuration for Azure AD B2C
 azure_ad_b2c_configs = [
@@ -103,7 +111,7 @@ print(oidc_urls)
 You can register custom OIDC providers using the `register_custom_provider` function. Here’s an example:
 
 ```python
-from fast_api_jwt_middleware.oidc_providers import register_custom_provider
+from fast_api_jwt_middleware import register_custom_provider
 
 # Register a custom OIDC provider
 register_custom_provider(
@@ -129,8 +137,7 @@ Here's a basic example of how to use the `AuthMiddleware` in a FastAPI applicati
 
 ```python
 from fastapi import FastAPI
-from fast_api_jwt_middleware import AuthMiddleware, secure_route
-from fast_api_jwt_middleware.oidc_helper import get_oidc_urls
+from fast_api_jwt_middleware import AuthMiddleware, secure_route, get_oidc_urls
 
 # Create a FastAPI application
 app = FastAPI()
@@ -186,42 +193,36 @@ async def public_endpoint():
     return {"message": "This is a public endpoint accessible to everyone."}
 ```
 
-### Complex Setup with `MultiProviderAuthMiddleware`
+#### Single Auth Provider with Multiple Audiences
 
-For a more complex use case with multiple OIDC providers, you can use the `MultiProviderAuthMiddleware`. Here’s how to set it up:
+The most common scenario that a developer will run into is one in which a single IdP is used for their applications but multiple audiences (applications) are able to access the endpoint. 
+
+In this case, you can still use the `AuthMiddleware`:
 
 ```python
 from fastapi import FastAPI
-from fast_api_jwt_middleware import MultiProviderAuthMiddleware, secure_route
-from fast_api_jwt_middleware.oidc_helper import get_oidc_urls
+from fast_api_jwt_middleware import AuthMiddleware, secure_route, get_oidc_urls
 
 # Create a FastAPI application
 app = FastAPI()
 
-# Azure AD B2C configuration for multiple policies
-azure_ad_b2c_configs = [
-    {
-        "tenant": "your-tenant-name",
-        "policy": "policy1"
-    },
-    {
-        "tenant": "your-tenant-name",
-        "policy": "policy2"
-    }
-]
+# Azure AD B2C configuration for a single policy
+azure_ad_b2c_config = {
+    "tenant": "your-tenant-name",
+    "policy": "policy1"
+}
 
-# Use the OIDC helper to get the OIDC URLs for each policy
-oidc_urls = get_oidc_urls(domains_or_configs=azure_ad_b2c_configs, provider_name="AZURE_AD_B2C")
+# Get OIDC URL for Azure AD B2C
+oidc_url = get_oidc_urls(domains_or_configs=azure_ad_b2c_config, provider_name="AZURE_AD_B2C")
 
-# Add the MultiProviderAuthMiddleware to the FastAPI app for each policy
+# Add the AuthMiddleware to the FastAPI app
 app.add_middleware(
-    MultiProviderAuthMiddleware,
-    providers=[{"oidc_urls": oidc_urls, "audiences": ["your-client-id","your-other-client-id"]}],  # Replace with your actual client ID(s)
-    roles_key="roles",  # Adjust this if your roles are stored under a different claim
-    excluded_paths=['/public-endpoint'] #Paths which you would not like to perform any auth checks
+    AuthMiddleware,
+    oidc_urls=[oidc_url],
+    audiences=["client-id-2", "client-id-2", "client-id-n"],  # Replace with your actual client IDs, up to N clients
+    roles_key="roles",  # Adjust this if your roles are stored under a different key
+    excluded_paths=["/public-endpoint"]
 )
-
-
 
 # Define a secure endpoint with role-based access control
 @app.get("/secure-endpoint")
@@ -243,10 +244,10 @@ async def yet_another_secure_endpoint():
 
 # Define another endpoint that only validates the
 # JWT and does not have any role requirements
-@app.get("/and-yet-another-secure-endpoint")
+@app.get("/yet-even-another-secure-endpoint")
 @secure_route()
-async def and_yet_another_secure_endpoint():
-    return {"message": "You have access to this secure endpoint but roles were not checked."}
+async def yet_even_another_secure_endpoint():
+    return {"message": "You have access to this secure endpoint as an admin or editor."}
 
 # Define a public endpoint without authentication
 # to avoid jwt auth, the path must be defined in the
@@ -256,7 +257,74 @@ async def public_endpoint():
     return {"message": "This is a public endpoint accessible to everyone."}
 ```
 
-### Configuration
+### Complex Setup with `MultiProviderAuthMiddleware`
+
+For a more complex use case with multiple OIDC providers, you can use the `MultiProviderAuthMiddleware`. Here’s how to set it up:
+
+```python
+from fastapi import FastAPI
+from fast_api_jwt_middleware import MultiProviderAuthMiddleware, secure_route, get_oidc_urls
+
+# Create a FastAPI application
+app = FastAPI()
+
+# Setup Azure AD / Entra ID as the services audience
+azure_ad_config = {
+    "tenant": "your-tenant-name"  # Replace with your Azure AD tenant name
+}
+
+# Azure AD B2C configuration for multiple policies
+azure_ad_b2c_configs = [
+    {
+        "tenant": "your-tenant-name",  # Replace with your Azure AD B2C tenant name
+        "policy": "B2C_1A_policy1"      # Replace with your Azure AD B2C policy
+    },
+    {
+        "tenant": "your-tenant-name",  # Replace with your Azure AD B2C tenant name
+        "policy": "B2C_1A_policy2"      # Replace with your Azure AD B2C policy
+    }
+]
+
+# Get OIDC URL for Azure AD
+oidc_url_azure_ad = get_oidc_urls(domains_or_configs=azure_ad_config, provider_name="AZURE_AD")
+
+# Get OIDC URLs for Azure AD B2C
+oidc_urls_azure_ad_b2c = get_oidc_urls(domains_or_configs=azure_ad_b2c_configs, provider_name="AZURE_AD_B2C")
+
+# Add the MultiProviderAuthMiddleware to the FastAPI app for both providers
+app.add_middleware(
+    MultiProviderAuthMiddleware,
+    providers=[
+        {"oidc_urls": [oidc_url_azure_ad], "audiences": ["your-client-id", "your-client-id-2"]},  # Replace with your actual Azure AD client ID
+        {"oidc_urls": oidc_urls_azure_ad_b2c, "audiences": ["your-client-id-b2c","another-client-id"]}  # Replace with your actual Azure AD B2C client ID
+    ],
+    roles_key="roles",  # Adjust this if your roles are stored under a different claim
+    excluded_paths=["/public-endpoint"]  # Paths which you would not like to perform any auth checks
+)
+
+# Define a secure endpoint with role-based access control
+@app.get("/secure-endpoint")
+@secure_route(required_roles="admin")
+async def secure_endpoint():
+    return {"message": "You have access to this secure endpoint."}
+
+# Define another secure endpoint with different role requirements
+@app.get("/another-secure-endpoint")
+@secure_route(required_roles=["admin", "editor"])
+async def another_secure_endpoint():
+    return {"message": "You have access to this secure endpoint as an admin or editor."}
+
+# Define a public endpoint without authentication
+@app.get("/public-endpoint")
+async def public_endpoint():
+    return {"message": "This is a public endpoint accessible to everyone."}
+```
+
+The above example uses Azure AD B2C and Azure AD, but this is interchangeable with any provider. The important part is that you setup your providers appropriately and with the correct audiences. The token construction is also important so bear in mind that you may need to override specific methods with differing RBAC considerations.
+
+>**NOTE:** whitespaces scp properties are not currently supported but will be in the near future for service to service authentication scenarios.
+
+### AuthMiddleware and MultiProviderAuthMiddleware Configuration
 
 | Parameter | Description | Default |
 | --- | --- | --- |
@@ -267,7 +335,7 @@ async def public_endpoint():
 | oidc_ttl | Time-to-live for the OIDC configuration cache (in seconds). | 3600 |
 | token_cache_maxsize | Maximum size of the token cache. | 1000 |
 | custom_token_cache | Your own implementation of the `CacheProtocol` for handling and caching tokens. | None |
-| logger | Logger for debug information during the authentication lifecycle. This logger must implement the `LoggerProtocol` contract exported from this project to be used. Only debug messages are propagated from this library if the logger's debug flag is enabled. Key: LOG_LEVEL from env. | logging.Logger |
+| logger | Logger for debug information during the authentication lifecycle. This logger must implement the `LoggerProtocol` contract exported from this project to be used. Only debug messages are propagated from this library if the logger's debug flag is enabled. | logging.Logger |
 | excluded_paths | Paths which should remain public for your application and do not require authentication. | [] |
 | roles_key | Default roles key for your `@secure_route` routes within your application. If the route is not in the excluded paths it will still execute jwt auth and require a valid token. | "roles" | 
 
@@ -278,7 +346,7 @@ When you have specific routes that need to be secured for different methods of a
 Example:
 
 ```python
-from fast_api_jwt_middleware.wrapper import secure_route
+from fast_api_jwt_middleware import secure_route
 
 # secured endpoint, uses the default roles_key in the
 # middleware or the "roles" claim on the token
@@ -307,7 +375,7 @@ async def secure_endpoint_no_options():
 
 ### Accessing Token Properties
 
-This library also will add the token properties to the request.state in fast api as a part of the authentication process. If you need to access specific information off of your token you will need to understand your token's structure and all properties are available on this state property. 
+This library also will add the token properties to the request.state in fast api as a part of the authentication process. If you need to access specific information off of your token you will need to understand your token's structure. By defauls all claims from the token are added as properties to the user object on the state property. 
 
 This library uses pyjwt for decoding and authentication of tokens. With that being said the token properties that exist on the request.state.user are a direct copy of the output of the jwt.decode method.
 
@@ -350,9 +418,9 @@ async def secure_endpoint_no_options(request: Request):
 
 ### Cache operations
 
-This library uses a singleton to manage an in memory cache for the tokens. These tokens are cached for the default that is created when you implement the middleware in your application. This includes max size and TTL. 
+This library uses a singleton to manage an in memory cache for the tokens. These tokens are cached for the token_ttl that is provided to the middleware when you add it to your FastAPI application. Both maxsize and the time to live (TTL) are exposed for your use.
 
-The cache is exposed to allow for debugging and cache operations for the users of this library. Specific scenarios where this is useful outside of debugging is to remove a token from the cache during logout, or in scenarios where you have invalidated the refresh token for the user and would like to revoke access to the API's at the same time if your provider does not support this action. 
+The cache is exposed to allow for debugging and cache operations for the users of this library. Specific scenarios where this is useful outside of debugging is to remove a token from the cache during logout, cycling tokens out of the cache out of band when risky behavior is detected or under specific business requirements. Another common scenario is when your provider does not invalidate access tokens even after a refresh token has been invalidate. In this case, it is the developer's responsibility to remove the token from the cache before the TTL expires.
 
 #### Cache operation examples:
 
@@ -397,7 +465,7 @@ TokenCacheSingleton.clear()
 
 ### BYOC (Bring Your Own Cache)
 
-This library supports injecting your own cache provider into the AuthMiddleware. If you would like to inject your own caching handler and not use the default TokenCache created within this library your cache provider must meet the CacheProtocol contract.
+This library supports injecting your own cache provider into the AuthMiddleware. To inject your own cache implementation into the middleware you must use the `custom_token_cache` property when setting up the middleware. Any custom_token_cache **must** implement the CacheProtocol contract. 
 
 The CacheProtocol contract defines the properties which are required for the TokenCacheSingleton to manage the cache. 
 
@@ -441,9 +509,8 @@ class InMemoryTokenCache(CacheProtocol):
 
 ```python
 from fastapi import FastAPI
-from fast_api_jwt_middleware import AuthMiddleware
-from fast_api_jwt_middleware.cache.in_memory_cache import InMemoryTokenCache
-from fast_api_jwt_middleware.oidc_helper import get_oidc_urls
+from fast_api_jwt_middleware import AuthMiddleware, get_oidc_urls
+from .memory_cache import InMemoryTokenCache
 
 app = FastAPI()
 
