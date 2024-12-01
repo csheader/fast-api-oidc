@@ -1,10 +1,12 @@
 name: Build, Test, and Publish
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
-  pull_request:
   release:
     types: [published]
 
@@ -34,13 +36,15 @@ jobs:
         run: python ./tests/run_tests.py
 
   publish:
-    needs: test  # This job will run after 'test' job completes successfully
+    needs: test  # This job runs after 'test' completes successfully
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'release'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history and tags
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
@@ -57,7 +61,7 @@ jobs:
         run: python -m build
 
       - name: Publish package to TestPyPI
-        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
