@@ -11,8 +11,8 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from fast_api_jwt_middleware.auth.multi_provider_auth_middleware import MultiProviderAuthMiddleware
-from fast_api_jwt_middleware.logger.logger_protocol_contract import LoggerProtocol
+from fast_api_oidc.auth.multi_provider_auth_middleware import MultiProviderAuthMiddleware
+from fast_api_oidc.logger.logger_protocol_contract import LoggerProtocol
 
 # Mock logger that implements LoggerProtocol
 class MockLogger(LoggerProtocol):
@@ -29,7 +29,7 @@ class MockLogger(LoggerProtocol):
 
 class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
 
-    @patch('fast_api_jwt_middleware.auth.auth_middleware.requests.get')
+    @patch('fast_api_oidc.auth.auth_middleware.requests.get')
     def setUp(self, mock_requests_get):
         # Mock the response of requests.get during instantiation
         def mocked_requests_get(url, *args, **kwargs):
@@ -80,7 +80,7 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
         self.middleware.oidc_config_cache.clear()
         self.middleware.jwks_cache.clear()
 
-    @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.jwt.decode')
+    @patch('fast_api_oidc.auth.multi_provider_auth_middleware.jwt.decode')
     def test_get_provider_for_token(self, mock_jwt_decode):
         """
         Test get_provider_for_token method to ensure it selects the correct provider based on token audience.
@@ -110,8 +110,8 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
 
         self.assertIsNone(provider)
 
-    @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.jwt.decode')
-    @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.MultiProviderAuthMiddleware.decode_token')
+    @patch('fast_api_oidc.auth.multi_provider_auth_middleware.jwt.decode')
+    @patch('fast_api_oidc.auth.multi_provider_auth_middleware.MultiProviderAuthMiddleware.decode_token')
     async def test_dispatch_with_valid_token(self, mock_decode_token, mock_jwt_decode_unverified):
         """
         Test dispatch method with a valid token.
@@ -149,8 +149,8 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
         self.assertEqual(request.state.user['sub'], mock_user_data['sub'], 'The sub on the token should match what was provided from the mock response \'user1\'')
         self.assertEqual(request.state.user['roles'], mock_user_data['roles'], 'The roles property should be an array of length 1 with \'admin\'')
 
-    @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.jwt.decode')
-    @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.MultiProviderAuthMiddleware.decode_token')
+    @patch('fast_api_oidc.auth.multi_provider_auth_middleware.jwt.decode')
+    @patch('fast_api_oidc.auth.multi_provider_auth_middleware.MultiProviderAuthMiddleware.decode_token')
     async def test_dispatch_with_invalid_token(self, mock_decode_token, mock_jwt_decode_unverified):
         """
         Test dispatch method with an invalid token.
@@ -206,7 +206,7 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
         # Ensure user data is None
         self.assertIsNone(request.state.user)
 
-    @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.jwt.decode')
+    @patch('fast_api_oidc.auth.multi_provider_auth_middleware.jwt.decode')
     async def test_dispatch_no_matching_provider(self, mock_jwt_decode_unverified):
         """
         Test dispatch method when token's audience doesn't match any provider.
@@ -236,8 +236,8 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
         # Ensure user data is None
         self.assertIsNone(request.state.user)
 
-    @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.jwt.decode')
-    @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.MultiProviderAuthMiddleware.decode_token')
+    @patch('fast_api_oidc.auth.multi_provider_auth_middleware.jwt.decode')
+    @patch('fast_api_oidc.auth.multi_provider_auth_middleware.MultiProviderAuthMiddleware.decode_token')
     async def test_dispatch_with_exception_in_decode(self, mock_decode_token, mock_jwt_decode_unverified):
         """
         Test dispatch method when an exception occurs in decode_token.

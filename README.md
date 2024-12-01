@@ -1,10 +1,10 @@
-# FastAPI Authentication Middleware
+# FastAPI OIDC Middleware
 
 >**NOTE:** This package is under active development.
 
 ## Overview
 
-`fast-api-auth-middleware` is a simple authentication middleware for FastAPI applications. It supports multiple OpenID Connect (OIDC) providers, including custom providers, and allows for role-based access control (RBAC) on routes.
+`fast-api-oidc` is a simple authentication middleware for FastAPI applications. It supports multiple OpenID Connect (OIDC) providers, including custom providers, and allows for role-based access control (RBAC) on routes.
 
 This library provides a fully featured RBAC set of controls for OIDC Identity Providers within the FastAPI ecosystem.
 
@@ -86,7 +86,7 @@ The `get_oidc_urls` function is a convenience method for users who do not know h
 The `get_oidc_urls` function constructs OIDC discovery URLs based on the provided configuration and provider name. Here’s how to use it:
 
 ```python
-from fast_api_jwt_middleware import get_oidc_urls
+from fast_api_oidc import get_oidc_urls
 
 # Example configuration for Azure AD B2C
 azure_ad_b2c_configs = [
@@ -111,7 +111,7 @@ print(oidc_urls)
 You can register custom OIDC providers using the `register_custom_provider` function. Here’s an example:
 
 ```python
-from fast_api_jwt_middleware import register_custom_provider
+from fast_api_oidc import register_custom_provider
 
 # Register a custom OIDC provider
 register_custom_provider(
@@ -138,7 +138,7 @@ Here's a basic example of how to use the `AuthMiddleware` in a FastAPI applicati
 
 ```python
 from fastapi import FastAPI
-from fast_api_jwt_middleware import AuthMiddleware, secure_route, get_oidc_urls
+from fast_api_oidc import AuthMiddleware, secure_route, get_oidc_urls
 
 # Create a FastAPI application
 app = FastAPI()
@@ -202,7 +202,7 @@ In this case, you can still use the `AuthMiddleware`:
 
 ```python
 from fastapi import FastAPI
-from fast_api_jwt_middleware import AuthMiddleware, secure_route, get_oidc_urls
+from fast_api_oidc import AuthMiddleware, secure_route, get_oidc_urls
 
 # Create a FastAPI application
 app = FastAPI()
@@ -264,7 +264,7 @@ For a more complex use case with multiple OIDC providers, you can use the `Multi
 
 ```python
 from fastapi import FastAPI
-from fast_api_jwt_middleware import MultiProviderAuthMiddleware, secure_route, get_oidc_urls
+from fast_api_oidc import MultiProviderAuthMiddleware, secure_route, get_oidc_urls
 
 # Create a FastAPI application
 app = FastAPI()
@@ -347,7 +347,7 @@ When you have specific routes that need to be secured for different methods of a
 Example:
 
 ```python
-from fast_api_jwt_middleware import secure_route
+from fast_api_oidc import secure_route
 
 # secured endpoint, uses the default roles_key in the
 # middleware or the "roles" claim on the token
@@ -426,7 +426,7 @@ The cache is exposed to allow for debugging and cache operations for the users o
 #### Cache operation examples:
 
 ```python
-from fast_api_jwt_middleware import TokenCacheSingleton
+from fast_api_oidc import TokenCacheSingleton
 
 # The cache is instantiated by the library by default.
 # You do not need to instantiate the cache to perform
@@ -479,7 +479,7 @@ An example of this implementation is below:
 # In Memory Token Cache implementation for providing your own cache
 # For this example this file will be in a file named memory_cache.py
 from typing import Any, Optional, Dict
-from fast_api_jwt_middleware import CacheProtocol
+from fast_api_oidc import CacheProtocol
 
 class InMemoryTokenCache(CacheProtocol):
     def __init__(self) -> None:
@@ -510,7 +510,7 @@ class InMemoryTokenCache(CacheProtocol):
 
 ```python
 from fastapi import FastAPI
-from fast_api_jwt_middleware import AuthMiddleware, get_oidc_urls
+from fast_api_oidc import AuthMiddleware, get_oidc_urls
 from .memory_cache import InMemoryTokenCache
 
 app = FastAPI()
@@ -556,7 +556,7 @@ The middleware returns the following HTTP responses:
 | `TypeError`    | Raised when an argument of an inappropriate type is passed, such as a logger that does not implement the required protocol. | Ensure that the correct types are used for all parameters, especially for custom loggers. | `AuthMiddleware` | `__init__` | "Logger must implement the logging protocol." |
 | `InvalidTokenError` | Raised when the provided JWT token is invalid or cannot be decoded. | Verify that the token is correctly formatted and valid. | `AuthMiddleware` | `decode_token` | "No token provided." <br> "Token is invalid." <br> "Invalid token: Key not found." |
 | `ExpiredSignatureError` | Raised when the JWT token has expired. | Ensure that the token is refreshed or reissued before it expires. | `AuthMiddleware` | `decode_token` | "Token has expired." |
-| `HTTPException` | Raised when access is denied due to insufficient roles or other authorization issues. | Check the user's roles against the required roles for the endpoint. | `fast_api_jwt_middleware/wrapper.py` | `@secure_route` or `do_role_check` | "You do not have the required role(s) to access this resource." <br> "User information not received in the request." |
+| `HTTPException` | Raised when access is denied due to insufficient roles or other authorization issues. | Check the user's roles against the required roles for the endpoint. | `fast_api_oidc/wrapper.py` | `@secure_route` or `do_role_check` | "You do not have the required role(s) to access this resource." <br> "User information not received in the request." |
 
 
 ## Dependencies

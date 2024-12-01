@@ -8,10 +8,10 @@ import requests
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from typing import List, Dict, Union, Optional
-from fast_api_jwt_middleware.logger.logger_protocol_contract import LoggerProtocol
-from fast_api_jwt_middleware.cache.cache_protocol_contract import CacheProtocol
-from fast_api_jwt_middleware.context_holder import request_context
-from fast_api_jwt_middleware.cache.token_cache_singleton import TokenCacheSingleton 
+from fast_api_oidc.logger.logger_protocol_contract import LoggerProtocol
+from fast_api_oidc.cache.cache_protocol_contract import CacheProtocol
+from fast_api_oidc.context_holder import request_context
+from fast_api_oidc.cache.token_cache_singleton import TokenCacheSingleton 
 
 class AuthMiddleware(BaseHTTPMiddleware):
     '''

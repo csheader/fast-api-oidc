@@ -2,7 +2,7 @@ import inspect
 from fastapi import HTTPException, status
 from functools import wraps
 from typing import Callable, List, Union
-from fast_api_jwt_middleware.context_holder import request_context
+from fast_api_oidc.context_holder import request_context
 
 def is_called_from_async_context(func: Callable, *args, **kwargs):
     '''
