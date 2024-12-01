@@ -6,7 +6,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-from fast_api_oidc.utils import secure_route, do_role_check, is_called_from_async_context
+from fast_api_jwt_middleware.utils import secure_route, do_role_check, is_called_from_async_context
 
 def mock_get_current_user():
     return {"username": "test_user", "roles": ["admin"]}
