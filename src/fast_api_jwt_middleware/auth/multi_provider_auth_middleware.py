@@ -90,7 +90,15 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
             return JSONResponse(status_code=401, content={'detail': 'No token provided.'})
         if token:
             token = token.replace('Bearer ', '')
-            provider = self.get_provider_for_token(token)
+            provider = None
+            try:
+                provider = self.get_provider_for_token(token)
+            except jwt.DecodeError as e:
+                self.logger.error(f'Failed to extract the provider from the token, this was caused by a decode error: {str(e)}')
+                return JSONResponse(status_code=400, content={'detail': 'An invalid token was supplied.'})
+            except Exception as e:
+                self.logger.error(f'Failed to extract the provider from the token, this was caused by a general exception: {str(e)}')
+                return JSONResponse(status_code=500, content={'detail': 'The token could not be parsed.'})
             if provider:
                 try:
                     user_data = self.decode_token(token)  # Use the base class method
@@ -105,8 +113,4 @@ class MultiProviderAuthMiddleware(AuthMiddleware):
                 except Exception as e:
                     self.logger.error(f'Authentication error: {str(e)}')
                     return JSONResponse(status_code=500, content={'detail': 'An error occurred during authentication. Please try again.'})
-
-
-        # No token or no matching provider
-        request.state.user = None
-        return await call_next(request)
+        return JSONResponse(status_code=401, content={'detail': 'The provided token is invalid for this service'})
