@@ -229,10 +229,8 @@ class TestMultiProviderAuthMiddleware(IsolatedAsyncioTestCase):
 
         response = await self.middleware.dispatch(request, call_next)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.body.decode(), '{"message":"No Matching Provider"}')
-        # Ensure user data is None
-        self.assertIsNone(request.state.user)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.body.decode(), '{"detail":"The provided token is invalid for this service"}')
 
     @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.jwt.decode')
     @patch('fast_api_jwt_middleware.auth.multi_provider_auth_middleware.MultiProviderAuthMiddleware.decode_token')

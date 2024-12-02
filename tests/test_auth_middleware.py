@@ -150,7 +150,7 @@ class TestAuthMiddleware(IsolatedAsyncioTestCase):
             issuer='https://example.com',
             algorithms=['RS256'],
             audience=self.audiences,
-            options={'verify_exp': True}
+            options={'verify_exp': True, 'verify_iss':True, 'verify_aud': True}
         )
     async def test_dispatch_no_token(self):
         """

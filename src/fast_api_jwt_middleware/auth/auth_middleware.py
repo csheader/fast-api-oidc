@@ -199,7 +199,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                             issuer=issuer,
                             algorithms=self.supported_algorithms[oidc_url],
                             audience=self.audiences,
-                            options={'verify_exp': True}
+                            options={'verify_exp': True, 'verify_iss':True, 'verify_aud': True}
                         )
                         self.logger.debug('Token valid, caching token for future use.')
                         self.token_cache.add_token(token, decoded_token)
