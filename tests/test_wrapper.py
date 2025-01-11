@@ -124,5 +124,15 @@ class TestSecureRoute(unittest.TestCase):
         result = is_called_from_async_context(sync_sum, 3, 7)
         self.assertEqual(result, 10, "The result should be the sum of the two inputs.")
 
+    def test_do_role_check_with_whitespace_delimited_roles(self):
+        """Test do_role_check with a whitespace-delimited roles string."""
+        user = {"scp": "admin user editor"}
+        required_roles = ["admin", "editor"]
+        try:
+            do_role_check(user, required_roles, roles_key='scp', value_delimiter=' ')
+        except HTTPException as e:
+            self.fail(f"do_role_check raised HTTPException unexpectedly: {e}")
+
+
 if __name__ == "__main__":
     unittest.main()

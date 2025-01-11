@@ -374,6 +374,30 @@ async def secure_endpoint_no_options():
 
 ```
 
+### Using `value_delimiter` in `secure_route`
+
+The `secure_route` decorator also supports a `value_delimiter` option, which allows you to specify a delimiter used to separate roles in the user roles string. This is useful when roles are stored as a single string with a specific delimiter.
+
+Example:
+
+from fast_api_jwt_middleware import secure_route
+
+```python
+# secured endpoint, uses a whitespace delimiter for roles
+@app.get("/secure-endpoint-whitespace-delimiter")
+@secure_route(required_roles="admin", roles_key='scp', value_delimiter=' ')
+async def secure_endpoint_whitespace_delimiter():
+    return {"message": "You have access to this secure endpoint."}
+
+# secured endpoint, uses a comma delimiter for roles
+@app.get("/secure-endpoint-comma-delimiter")
+@secure_route(required_roles="admin", roles_key='scp', value_delimiter=',')
+async def secure_endpoint_comma_delimiter():
+    return {"message": "You have access to this secure endpoint."}
+```
+
+In the above examples, the `value_delimiter` parameter is used to split the roles string into a list of roles. This allows the `secure_route` decorator to correctly check if the user has the required roles to access the endpoint.
+
 ### Accessing Token Properties
 
 This library also will add the token properties to the request.state in fast api as a part of the authentication process. If you need to access specific information off of your token you will need to understand your token's structure. By defauls all claims from the token are added as properties to the user object on the state property. 

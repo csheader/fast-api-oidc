@@ -11,6 +11,12 @@ class TestTokenCacheSingleton(unittest.TestCase):
         """Set up a TokenCacheSingleton instance for testing."""
         self.cache_singleton = TokenCacheSingleton()
 
+    def tearDown(self):
+        """Clear the TokenCacheSingleton instance after each test."""
+        TokenCacheSingleton.clear()
+        TokenCacheSingleton._instance = None
+        TokenCacheSingleton._custom_cache = None
+
     def test_singleton_instance(self):
         """Test that TokenCacheSingleton returns the same instance."""
         another_instance = TokenCacheSingleton()
@@ -18,8 +24,8 @@ class TestTokenCacheSingleton(unittest.TestCase):
 
     def test_add_token(self):
         """Test adding a token to the cache."""
-        self.cache_singleton.add_token("token1", {"user": "test_user"})
-        self.assertEqual(self.cache_singleton.get_token("token1"), {"user": "test_user"})
+        self.cache_singleton.add_token("token-test-1", {"sub": "user1"})
+        self.assertEqual(self.cache_singleton.get_token("token-test-1"), {"sub": "user1"})
 
     def test_get_token_not_found(self):
         """Test retrieving a token that does not exist."""
@@ -56,12 +62,7 @@ if __name__ == "__main__":
     loader.sortTestMethodsUsing = None
     # Order the tests in this file so that they do not impact
     # eachother since this class is a singleton
-    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_singleton_instance)
-    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_add_token)
-    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_get_token_not_found)
-    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_remove_token)
-    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_remove_token_not_found)
-    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_remove_all)
-    suite = loader.loadTestsFromTestCase(TestTokenCacheSingleton.test_clear_cache)
+    suite = unittest.TestSuite()
+    suite.addTests(loader.loadTestsFromTestCase(TestTokenCacheSingleton))
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
