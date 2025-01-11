@@ -20,11 +20,14 @@ def is_called_from_async_context(func: Callable, *args, **kwargs):
         # If it's sync, just call it directly
         return func(*args, **kwargs)
 
-def do_role_check(user, required_roles, roles_key):
+def do_role_check(user, required_roles: str | List[str], roles_key: str, value_delimiter: str= None):
     '''
     Checks if the user has the required roles to access a resource.
 
     :param user: The user object containing role information.
+    :param required_roles: The roles required to access the resource.
+    :param roles_key: The key in the token where roles are stored.
+    :param value_delimiter: The delimiter used to separate roles in the user_roles string (default: None).
     :raises HTTPException: If the user does not have the required role(s), a 403 Forbidden error is raised.
     
     This function retrieves the roles associated with the user and checks them against the 
@@ -39,7 +42,15 @@ def do_role_check(user, required_roles, roles_key):
     '''
     user_roles = user.get(roles_key, [])
     if isinstance(user_roles, str):
-        user_roles = [user_roles]
+        if value_delimiter:
+            user_roles = user_roles.split(value_delimiter)
+        else:
+            user_roles = [user_roles]
+    elif isinstance(user_roles, list):
+        user_roles = user_roles
+    else:
+        user_roles = []
+
     if isinstance(required_roles, str):
         allowed_roles = [required_roles]
     elif isinstance(required_roles, list):
@@ -47,7 +58,6 @@ def do_role_check(user, required_roles, roles_key):
     else:
         allowed_roles = []
 
-    #TODO: Handle scp whitelist delimited values
     if allowed_roles and not any(role in user_roles for role in allowed_roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -56,13 +66,15 @@ def do_role_check(user, required_roles, roles_key):
 
 def secure_route(
     required_roles: Union[str, List[str]] = None,
-    roles_key: str = 'roles'
+    roles_key: str = 'roles',
+    value_delimiter: str = None
 ) -> Callable:
     '''
     A decorator to secure routes by checking the user's roles.
 
     :param required_roles: A single role or a list of roles required for accessing the route.
     :param roles_key: The key in the token where roles are stored (default: 'roles').
+    :param value_delimiter: The delimiter used to separate roles in the user_roles string (default: None).
     '''
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -84,7 +96,7 @@ def secure_route(
                 )
             # Use the roles_key from the wrapper if provided, otherwise use the default
             effective_roles_key = kwargs.get('roles_key', roles_key)
-            do_role_check(user, required_roles, effective_roles_key)
+            do_role_check(user, required_roles, effective_roles_key, value_delimiter)
             maybe_async = is_called_from_async_context(func, *args, **kwargs)
             if inspect.iscoroutine(maybe_async):
                 return await maybe_async

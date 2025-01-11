@@ -70,7 +70,7 @@ class TokenCache:
         '''
         Clear all tokens from the cache.
         '''
-        self._cache.clear()
+        self._cache = TTLCache(maxsize=self._cache.maxsize, ttl=self._cache.ttl)
         self.logger.debug('All tokens cleared from cache.')
 
     def list_tokens(self, page: int = 1, page_size: int = 10) -> dict:
