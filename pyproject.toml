@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fast-api-jwt-middleware"
-version = "0.0.4"
+version = "1.0.0"
 description = "A FastAPI middleware for JWT-based authentication with support for multiple providers."
 readme = { file = "README.md", content-type = "text/markdown" } 
 license = { file = "LICENSE" }
@@ -21,7 +21,7 @@ dependencies = [
     "cryptography"
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
