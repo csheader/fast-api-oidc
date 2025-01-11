@@ -323,7 +323,6 @@ async def public_endpoint():
 
 The above example uses Azure AD B2C and Azure AD, but this is interchangeable with any provider. The important part is that you setup your providers appropriately and with the correct audiences. The token construction is also important so bear in mind that you may need to override specific methods with differing RBAC considerations.
 
->**NOTE:** whitespaces scp properties are not currently supported but will be in the near future for service to service authentication scenarios.
 
 ### AuthMiddleware and MultiProviderAuthMiddleware Configuration
 
